@@ -5,7 +5,7 @@ export default function Layout({ children }) {
     <div
       className={clsx(
         'w-screen h-screen overflow-x-hidden',
-        'sm:w-[430px] sm:h-[932px] sm:m-auto sm:mt-5 sm:rounded-[30px] sm:shadow-xl'
+        'sm:w-[430px] sm:h-[932px] sm:m-auto sm:mt-5 sm:rounded-[30px] sm:shadow-xl sm:border'
       )}>
       {children}
     </div>

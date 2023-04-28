@@ -91,7 +91,7 @@ export default function Home() {
             <button
               className="w-[42px] h-[42px] bg-white rounded-full flex items-center justify-center text-[#CACACA] hover:text-black transition-all"
               onClick={() => setIsActiveSearch(true)}>
-              <RiSearchLine className="w-5 h-5 " />
+              <RiSearchLine className="w-5 h-5" />
             </button>
             <button
               className="w-[42px] h-[42px] bg-white rounded-full flex items-center justify-center text-[#CACACA] hover:text-black transition-all"
@@ -135,7 +135,8 @@ export default function Home() {
         {filteredData.map((data, i) => (
           <div
             key={i}
-            className="flex justify-between items-center py-3 cursor-pointer px-[25px] hover:bg-gray-100">
+            className="flex justify-between items-center py-3 cursor-pointer px-[25px] hover:bg-gray-100"
+            onClick={() => navigate(`/${data.name}`)}>
             <div className="flex gap-[20px] items-center">
               <img
                 src={data.profilePicture}

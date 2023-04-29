@@ -8,10 +8,11 @@ import {
   GoogleAuthProvider,
   onAuthStateChanged,
 } from 'firebase/auth'
-import { auth } from '../config/firebase'
+import { auth, firestore } from '../config/firebase'
 import { useDispatch } from 'react-redux'
 import { setUserInfo } from '../redux/actions/user'
 import { useNavigate } from 'react-router-dom'
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
 
 export default function Login() {
   const dispatch = useDispatch()
@@ -24,6 +25,7 @@ export default function Login() {
       .then(res => {
         // get user
         const user = res.user
+        updateUserProfile(user.displayName, user.email, user.photoURL)
         dispatch(
           setUserInfo({
             name: user.displayName,
@@ -54,6 +56,39 @@ export default function Login() {
       console.info('user belum login')
     })
   }, [dispatch, navigate])
+
+  // add new users
+  const updateUserProfile = async (name, email, foto) => {
+    const usersRef = doc(firestore, 'users', email)
+    const data = await getDoc(usersRef)
+    if (data.data()) {
+      await updateDoc(usersRef, {
+        ...data.data(),
+        name: name,
+        email: email,
+        profilePicture: foto,
+      })
+        .then(() => {
+          console.info('update success')
+        })
+        .catch(err => {
+          console.error(err)
+        })
+    } else {
+      await setDoc(usersRef, {
+        name: name,
+        email: email,
+        profilePicture: foto,
+        rooms: [],
+      })
+        .then(() => {
+          console.info('create success')
+        })
+        .catch(err => {
+          console.error(err)
+        })
+    }
+  }
 
   return (
     <div className="bg-white h-full flex flex-col pb-8">

@@ -7,16 +7,18 @@ import {
   RiSearchLine,
   RxCross2,
 } from 'react-icons/all'
-import { auth } from '../config/firebase'
+import { auth, firestore } from '../config/firebase'
 import { useNavigate } from 'react-router-dom'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { deleteUserInfo } from '../redux/actions/user'
 import clsx from 'clsx'
 import ModalStartChat from '../components/ModalStartChat'
 import { showStartChat } from '../redux/actions/popup'
+import { doc, getDoc } from 'firebase/firestore'
 
 const fakeData = [
   {
+    _id: 1,
     name: 'Joko',
     email: 'joko@gmail.com',
     profilePicture: `https://picsum.photos/60/60?random=${Math.floor(
@@ -57,11 +59,31 @@ const fakeData = [
   },
 ]
 
+interface State {
+  user: {
+    email: string
+  }
+}
+
 export default function Home() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
+  const user = useSelector((state: State) => state.user)
   const [isActiveSearch, setIsActiveSearch] = React.useState(false)
   const [search, setSearch] = React.useState('')
+  const [roomsId, setRoomsId] = React.useState([])
+  const [roomChat, setRoomChat] = React.useState<unknown[]>([])
+  const [roomsList, setRoomsList] = React.useState<unknown[]>([])
+
+  React.useEffect(() => {
+    getRoomsId()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  React.useEffect(() => {
+    getRoomChatAll()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomsId])
 
   const signOutFromApp = () => {
     signOut(auth)
@@ -73,6 +95,40 @@ export default function Home() {
         console.error(err)
       })
   }
+
+  // ambil list id rooms pada users
+  const getRoomsId = async () => {
+    const usersRef = doc(firestore, 'users', user.email)
+    const data = await getDoc(usersRef)
+    const res = data.data()
+    const room = await res?.rooms
+    setRoomsId(room)
+  }
+
+  // ambil room_chat
+  const getRoomChat = async idRoom => {
+    const roomChatRef = doc(firestore, 'room_chat', idRoom)
+    const data = await getDoc(roomChatRef)
+    return data.data()
+  }
+
+  const getUserProfile = async email => {
+    const usersRef = doc(firestore, 'users', email)
+    const data = await getDoc(usersRef)
+    const res = data.data()
+    const foto = res?.userProfilePicture
+    const name = res?.name
+    return { name, foto}
+  }
+
+  const getRoomChatAll = () => {
+    const array = Promise.all(roomsId.map(idRoom => getRoomChat(idRoom)))
+    array.then(res => setRoomChat(res))
+  }
+
+  // const generateRoomsList = () => {
+    
+  // }
 
   const filteredData = fakeData.filter(data =>
     data.name.toLowerCase().includes(search.toLowerCase())
@@ -112,7 +168,7 @@ export default function Home() {
               </div>
 
               <input
-                className="peer h-full w-full outline-none text-sm text-gray-700 pr-2"
+                className="peer h-full w-full outline-none text-sm text-gray-700 pr-2 focus:ring-0"
                 type="text"
                 autoFocus
                 value={search}

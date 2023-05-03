@@ -1,14 +1,15 @@
 import ActionType from '../actionType'
 
 interface Props {
+  id: string | null
   name: string | null
   email: string | null
   foto: string | null
 }
 
-export const setUserInfo = ({ name, email, foto }: Props) => ({
+export const setUserInfo = ({ id, name, email, foto }: Props) => ({
   type: ActionType.SET_USERINFO,
-  payload: { name, email, foto },
+  payload: { id, name, email, foto },
 })
 
 export const deleteUserInfo = () => ({

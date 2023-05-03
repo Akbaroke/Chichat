@@ -25,9 +25,10 @@ export default function Login() {
       .then(res => {
         // get user
         const user = res.user
-        updateUserProfile(user.displayName, user.email, user.photoURL)
+        updateUserProfile(user.uid, user.displayName, user.email, user.photoURL)
         dispatch(
           setUserInfo({
+            id: user.uid,
             name: user.displayName,
             email: user.email,
             foto: user.photoURL,
@@ -45,6 +46,7 @@ export default function Login() {
       if (user) {
         dispatch(
           setUserInfo({
+            id: user.uid,
             name: user.displayName,
             email: user.email,
             foto: user.photoURL,
@@ -58,15 +60,15 @@ export default function Login() {
   }, [dispatch, navigate])
 
   // add new users
-  const updateUserProfile = async (name, email, foto) => {
-    const usersRef = doc(firestore, 'users', email)
+  const updateUserProfile = async (id, name, email, foto) => {
+    const usersRef = doc(firestore, 'users', id)
     const data = await getDoc(usersRef)
     if (data.data()) {
       await updateDoc(usersRef, {
         ...data.data(),
         name: name,
         email: email,
-        profilePicture: foto,
+        imgProfile: foto,
       })
         .then(() => {
           console.info('update success')
@@ -78,7 +80,7 @@ export default function Login() {
       await setDoc(usersRef, {
         name: name,
         email: email,
-        profilePicture: foto,
+        imgProfile: foto,
         rooms: [],
       })
         .then(() => {

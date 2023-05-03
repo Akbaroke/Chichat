@@ -14,6 +14,7 @@ export default function Auth({ children }) {
       if (user) {
         dispatch(
           setUserInfo({
+            id: user.uid,
             name: user.displayName,
             email: user.email,
             foto: user.photoURL,

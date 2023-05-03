@@ -14,55 +14,24 @@ import { deleteUserInfo } from '../redux/actions/user'
 import clsx from 'clsx'
 import ModalStartChat from '../components/ModalStartChat'
 import { showStartChat } from '../redux/actions/popup'
-import { doc, getDoc } from 'firebase/firestore'
-
-const fakeData = [
-  {
-    _id: 1,
-    name: 'Joko',
-    email: 'joko@gmail.com',
-    profilePicture: `https://picsum.photos/60/60?random=${Math.floor(
-      Math.random() * 10
-    )}`,
-    isMessageFromMe: true,
-    messageDetails: {
-      listMessage: ['Hallo', 'Hallo bro'],
-      isRead: false,
-      timestamp: '12:23 PM',
-    },
-  },
-  {
-    name: 'Doni',
-    email: 'doni@gmail.com',
-    profilePicture: `https://picsum.photos/60/60?random=${Math.floor(
-      Math.random() * 10
-    )}`,
-    isMessageFromMe: false,
-    messageDetails: {
-      listMessage: ['Hallo Doni'],
-      isRead: false,
-      timestamp: '12:23 PM',
-    },
-  },
-  {
-    name: 'Ahmad',
-    email: 'ahmad@gmail.com',
-    profilePicture: `https://picsum.photos/60/60?random=${Math.floor(
-      Math.random() * 10
-    )}`,
-    isMessageFromMe: false,
-    messageDetails: {
-      listMessage: ['Hallo Ahmad'],
-      isRead: true,
-      timestamp: '12:23 PM',
-    },
-  },
-]
+import {
+  DocumentData,
+  DocumentReference,
+  doc,
+  getDoc,
+} from 'firebase/firestore'
+import converterTimestamp from '../utils/converterTimestamp'
 
 interface State {
   user: {
+    id: string
     email: string
   }
+}
+
+interface UsersId {
+  user: DocumentReference[]
+  chat: DocumentReference[]
 }
 
 export default function Home() {
@@ -71,19 +40,111 @@ export default function Home() {
   const user = useSelector((state: State) => state.user)
   const [isActiveSearch, setIsActiveSearch] = React.useState(false)
   const [search, setSearch] = React.useState('')
-  const [roomsId, setRoomsId] = React.useState([])
-  const [roomChat, setRoomChat] = React.useState<unknown[]>([])
-  const [roomsList, setRoomsList] = React.useState<unknown[]>([])
+  const [roomsRef, setRoomsRef] = React.useState<DocumentData | undefined>([])
+  const [usersRef, setUsersRef] = React.useState<DocumentData | undefined>([])
+  const [chatsRef, setChatsRef] = React.useState<DocumentData | undefined>([])
+  const [users, setUsers] = React.useState<DocumentData | undefined>([])
+  const [chats, setChats] = React.useState<DocumentData | undefined>([])
+  const [listRoom, setListRoom] = React.useState<DocumentData | undefined>([])
+
+  // Ngambil roomsRef dari users
+  React.useEffect(() => {
+    const fetch = async () => {
+      const ref = doc(firestore, 'users', user.id)
+      const data = await getDoc(ref)
+      setRoomsRef(data.data()?.rooms)
+    }
+    fetch()
+  }, [user.id])
 
   React.useEffect(() => {
-    getRoomsId()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    // Ngambil usersRef dari roomsRef
+    const promisesUsers = roomsRef?.map(async ref => {
+      const res = await getDoc(ref)
+      const data = res.data() as UsersId
+      return data.user
+    })
+    Promise.all(promisesUsers).then(data => {
+      setUsersRef(data)
+    })
 
+    // Ngambil chatsRef dari roomsRef
+    const promisesChats = roomsRef?.map(async ref => {
+      const res = await getDoc(ref)
+      const data = res.data() as UsersId
+      return data.chat
+    })
+    Promise.all(promisesChats).then(data => {
+      setChatsRef(data)
+    })
+  }, [roomsRef])
+
+  // Ngambil users dari usersRef
   React.useEffect(() => {
-    getRoomChatAll()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomsId])
+    const fetchData = async () => {
+      const promises = usersRef?.map(async i => {
+        const promisesRef = i.map(async ref => {
+          const res = await getDoc(ref)
+          const data = res.data() as UsersId
+          return data
+        })
+        return Promise.all(promisesRef)
+      })
+      const resultPromise = await Promise.all(promises)
+      const flattenArr = resultPromise.flat()
+      const result = flattenArr.reduce((acc, curr) => {
+        if (curr.email !== user.email) {
+          const existingItem = acc.find(item => item.id === curr.email)
+          if (!existingItem) {
+            acc.push(curr)
+          }
+        }
+        return acc
+      }, [])
+      setUsers(result)
+    }
+
+    fetchData()
+  }, [user.email, user.id, usersRef])
+
+  // Ngambil chats dari chatsRef
+  React.useEffect(() => {
+    const fetchData = async () => {
+      const promises = chatsRef?.map(async i => {
+        const promisesRef = i.map(async ref => {
+          const res = await getDoc(ref)
+          const data = res.data() as UsersId
+          return data
+        })
+        return Promise.all(promisesRef)
+      })
+      const resultPromise = await Promise.all(promises)
+      setChats(resultPromise)
+    }
+
+    fetchData()
+  }, [chatsRef])
+
+  // merged
+  React.useEffect(() => {
+    if (users && chats) {
+      const merged = users.map((item, index) => ({
+        ...item,
+        detailMessage: chats[index],
+      }))
+      setListRoom(merged)
+    }
+  }, [users, chats])
+
+  // log check
+  React.useEffect(() => {
+    console.info('roomsRef : ', roomsRef)
+    console.info('chatsRef : ', chatsRef)
+    console.info('usersRef : ', usersRef)
+    console.info('users : ', users)
+    console.info('chats : ', chats)
+    console.info('listRoom : ', listRoom)
+  }, [chats, chatsRef, listRoom, roomsRef, users, usersRef])
 
   const signOutFromApp = () => {
     signOut(auth)
@@ -96,41 +157,17 @@ export default function Home() {
       })
   }
 
-  // ambil list id rooms pada users
-  const getRoomsId = async () => {
-    const usersRef = doc(firestore, 'users', user.email)
-    const data = await getDoc(usersRef)
-    const res = data.data()
-    const room = await res?.rooms
-    setRoomsId(room)
+  const countLastMessage = datas => {
+    let count = 0
+    datas.forEach(i => {
+      if (!i.isRead) {
+        count += 1
+      }
+    })
+    return count
   }
 
-  // ambil room_chat
-  const getRoomChat = async idRoom => {
-    const roomChatRef = doc(firestore, 'room_chat', idRoom)
-    const data = await getDoc(roomChatRef)
-    return data.data()
-  }
-
-  const getUserProfile = async email => {
-    const usersRef = doc(firestore, 'users', email)
-    const data = await getDoc(usersRef)
-    const res = data.data()
-    const foto = res?.userProfilePicture
-    const name = res?.name
-    return { name, foto}
-  }
-
-  const getRoomChatAll = () => {
-    const array = Promise.all(roomsId.map(idRoom => getRoomChat(idRoom)))
-    array.then(res => setRoomChat(res))
-  }
-
-  // const generateRoomsList = () => {
-    
-  // }
-
-  const filteredData = fakeData.filter(data =>
+  const filteredData = listRoom?.filter(data =>
     data.name.toLowerCase().includes(search.toLowerCase())
   )
 
@@ -188,14 +225,14 @@ export default function Home() {
         </div>
       )}
       <div>
-        {filteredData.map((data, i) => (
+        {filteredData?.map((data, i) => (
           <div
             key={i}
             className="flex justify-between items-center py-3 cursor-pointer px-[25px] hover:bg-gray-100"
             onClick={() => navigate(`/${data.name}`)}>
             <div className="flex gap-[20px] items-center">
               <img
-                src={data.profilePicture}
+                src={data.imgProfile}
                 alt={data.name}
                 className="rounded-full"
                 width={60}
@@ -205,30 +242,37 @@ export default function Home() {
                 <h1 className="font-semibold text-[15px] capitalize">
                   {data.name}
                 </h1>
-                <p className="font-normal text-[12px] text-[#A0A0A0]">
-                  {data.messageDetails.listMessage.at(-1)}
-                </p>
+                {data.detailMessage.length > 0 ? (
+                  <p className="font-normal text-[12px] text-[#A0A0A0]">
+                    {data.detailMessage[data.detailMessage.length - 1].message}
+                  </p>
+                ) : null}
               </div>
             </div>
-            <div className="flex flex-col items-end gap-[5px]">
-              <p className="font-normal text-[12px] text-[#A0A0A0]">
-                {data.messageDetails.timestamp}
-              </p>
-              {data.isMessageFromMe ? (
-                <div className="grid place-items-center w-5 h-5 rounded-full bg-[#D24140] text-white font-semibold text-[10px] py-.5">
-                  {data.messageDetails.listMessage.length}
-                </div>
-              ) : (
-                <BsCheckAll
-                  className={clsx(
-                    'w-5 h-5',
-                    data.messageDetails.isRead
-                      ? 'text-[#70C996]'
-                      : 'text-[#C2C2C2]'
+            {data.detailMessage.length > 0 ? (
+              <div className="flex flex-col items-end gap-[5px]">
+                <p className="font-normal text-[12px] text-[#A0A0A0]">
+                  {converterTimestamp(
+                    data?.detailMessage[data.detailMessage.length - 1].timestamp
                   )}
-                />
-              )}
-            </div>
+                </p>
+                {data?.detailMessage[data.detailMessage.length - 1].userId !==
+                user.id ? (
+                  <div className="grid place-items-center w-5 h-5 rounded-full bg-[#D24140] text-white font-semibold text-[10px] py-.5">
+                    {countLastMessage(data.detailMessage)}
+                  </div>
+                ) : (
+                  <BsCheckAll
+                    className={clsx(
+                      'w-5 h-5',
+                      data?.detailMessage[data.detailMessage.length - 1].isRead
+                        ? 'text-[#70C996]'
+                        : 'text-[#C2C2C2]'
+                    )}
+                  />
+                )}
+              </div>
+            ) : null}
           </div>
         ))}
       </div>

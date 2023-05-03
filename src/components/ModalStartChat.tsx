@@ -5,7 +5,14 @@ import { RxCross2 } from 'react-icons/rx'
 import { useDispatch, useSelector } from 'react-redux'
 import { hideStartChat } from '../redux/actions/popup'
 import { firestore } from '../config/firebase'
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+} from 'firebase/firestore'
 import {
   AiOutlineCheckCircle,
   AiOutlineCloseCircle,
@@ -20,6 +27,7 @@ interface State {
     isModalStartChat: boolean
   }
   user: {
+    id: string
     email: string
   }
 }
@@ -29,23 +37,27 @@ export default function ModalStartChat() {
   const { isModalStartChat } = useSelector((state: State) => state.popup)
   const user = useSelector((state: State) => state.user)
   const [email, setEmail] = React.useState('')
+  const [idUserTarget, setIdUserTarget] = React.useState('')
   const [isLoadingCheckEmail, setIsLoadingCheckEmail] = React.useState(false)
   const [validateEmail, setValidateEmail] = React.useState('')
 
-  const isEmailRegister = async email => {
-    const usersRef = doc(firestore, 'users', email)
-    const data = await getDoc(usersRef)
-    if (data.data()) {
-      return true
-    }
-    return false
+  const isEmailRegister = async () => {
+    const allUsersRef = collection(firestore, 'users')
+    const allUsers = await getDocs(allUsersRef)
+    return allUsers.docs.map(doc => {
+      if (email === doc.data()?.email) {
+        setIdUserTarget(doc.id)
+        return true
+      }
+      return false
+    })
   }
 
-  const handleOnChange = async e => {
+  const handleOnChange = async () => {
     setIsLoadingCheckEmail(true)
-    const email = e.target.value
     if (email !== user.email && email.length > 0) {
-      if (await isEmailRegister(email)) {
+      const isRegist = await isEmailRegister()
+      if (isRegist.some(val => val)) {
         setValidateEmail('Email found')
       } else {
         setValidateEmail('Email not found')
@@ -58,75 +70,43 @@ export default function ModalStartChat() {
 
   const handleclick = async () => {
     const idRoom = uuidv4()
-    const idHistory = uuidv4()
+    const usersRef = [
+      doc(firestore, 'users', user.id),
+      doc(firestore, 'users', idUserTarget),
+    ]
 
-    const roomChatRef = doc(firestore, 'room_chat', idRoom)
-    setDoc(roomChatRef, {
-      _id: idRoom,
-      id_messageHistory: idHistory,
-      lastMessage: {
-        from: '',
-        isRead: false,
-        messages: [],
-        timestamp: Math.floor(new Date().getTime() / 1000.0),
-      },
-      user1: user.email,
-      user2: email,
-    })
-      .then(() => {
-        console.info('room chat berhasil di buat')
+    // create room
+    try {
+      const roomsRef = doc(firestore, 'rooms', idRoom)
+      await setDoc(roomsRef, {
+        chat: [],
+        user: usersRef,
       })
-      .catch(err => {
-        console.error(err)
-      })
+      console.info('Room created Successfully')
+    } catch (error) {
+      console.error(error)
+    }
 
-    // update rooms user1
-    const user1_Ref = doc(firestore, 'users', user.email)
-    const user1_data = await getDoc(user1_Ref)
-    const user1_roomsBefore = user1_data.data()?.rooms
-    user1_roomsBefore.push(idRoom)
-    await updateDoc(user1_Ref, {
-      ...user1_data.data(),
-      rooms: user1_roomsBefore,
-    })
-      .then(() => {
-        console.info('update users1')
-      })
-      .catch(err => {
-        console.error(err)
+    // update data user
+    try {
+      const promises = usersRef.map(async ref => {
+        const res = await getDoc(ref)
+        const newRooms = [
+          ...(res.data()?.rooms ?? []),
+          doc(firestore, 'rooms', idRoom),
+        ]
+        console.info(res.data())
+        await updateDoc(ref, {
+          ...res.data(),
+          rooms: newRooms,
+        })
       })
 
-    // update rooms user2
-    const user2_Ref = doc(firestore, 'users', email)
-    const user2_data = await getDoc(user2_Ref)
-    const user2_roomsBefore = user2_data.data()?.rooms
-    user2_roomsBefore.push(idRoom)
-    await updateDoc(user2_Ref, {
-      ...user2_data.data(),
-      rooms: user2_roomsBefore,
-    })
-      .then(() => {
-        console.info('update users2')
-      })
-      .catch(err => {
-        console.error(err)
-      })
-
-    // create message history
-    const messageHistoryRef = doc(firestore, 'message_history', idHistory)
-    setDoc(messageHistoryRef, {
-      _id: idHistory,
-      id_roomChat: idRoom,
-      messages: [],
-      user1: user.email,
-      user2: email,
-    })
-      .then(() => {
-        console.info('message history berhasil di buat')
-      })
-      .catch(err => {
-        console.error(err)
-      })
+      await Promise.all(promises)
+      console.info('Users Update Successful')
+    } catch (error) {
+      console.error(error)
+    }
 
     dispatch(hideStartChat())
     setEmail('')

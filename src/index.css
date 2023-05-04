@@ -18,3 +18,7 @@
 html {
   box-sizing: border-box;
 }
+
+textarea::-webkit-scrollbar {
+    display: none !important;
+}

@@ -17,7 +17,7 @@ export default function root() {
         }
       />
       <Route
-        path="/:name"
+        path="/chat"
         element={
           <Middleware.Auth>
             <RoomChat />

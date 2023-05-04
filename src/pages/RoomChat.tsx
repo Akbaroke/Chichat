@@ -1,74 +1,177 @@
 import clsx from 'clsx'
+import {
+  DocumentData,
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
+  setDoc,
+  updateDoc,
+} from 'firebase/firestore'
 import * as React from 'react'
 import {
   BiHide,
   BsCheckAll,
+  BsSend,
   BsThreeDotsVertical,
   SlArrowLeft,
 } from 'react-icons/all'
 import { useSelector } from 'react-redux'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import ScrollToBottom from 'react-scroll-to-bottom'
-
-const fakeChat = [
-  {
-    _id: 1,
-    message: 'Hello Bro! Can you check figma for next weeks shot?',
-    timestapm: '12:23 PM',
-    email: 'joni@gmail.com',
-    isRead: true,
-    isHide: false,
-  },
-  {
-    _id: 2,
-    message: 'Sure! can you send the figma links?',
-    timestapm: '12:23 PM',
-    email: 'akbarmuhammad833@gmail.com',
-    isRead: true,
-    isHide: false,
-  },
-  {
-    _id: 3,
-    message: 'Im very happy to hear feedback from you.',
-    timestapm: '12:23 PM',
-    email: 'joni@gmail.com',
-    isRead: true,
-    isHide: true,
-  },
-  {
-    _id: 4,
-    message: 'Awesome Work, Dude!',
-    timestapm: '12:23 PM',
-    email: 'akbarmuhammad833@gmail.com',
-    isRead: true,
-    isHide: true,
-  },
-  {
-    _id: 5,
-    message: 'Thank You bro!',
-    timestapm: '12:23 PM',
-    email: 'joni@gmail.com',
-    isRead: true,
-    isHide: false,
-  },
-]
+import { firestore } from '../config/firebase'
+import { v4 as uuidv4 } from 'uuid'
+import converterTimestamp from '../utils/converterTimestamp'
 
 interface State {
   user: {
+    id: string
     name: string
     email: string
     foto: string
   }
+  chat: {
+    roomId: string
+    userId: string
+    name: string
+    imgProfile: string
+    email: string
+  }
 }
 
 export default function RoomChat() {
-  const params = useParams()
   const navigate = useNavigate()
-  const { email } = useSelector((state: State) => state.user)
-  const [messages, setMessages] = React.useState(fakeChat)
+  const { id } = useSelector((state: State) => state.user)
+  const chat = useSelector((state: State) => state.chat)
+  const [messages, setMessages] = React.useState<DocumentData>([])
+  const [currentMessage, setCurrentMessage] = React.useState('')
+  const [heightTextArea, setHeightTextArea] = React.useState(50)
+  const [chatsRef, setChatsRef] = React.useState<DocumentData | undefined>([])
+  const [isChanged, setIsChanged] = React.useState<boolean>(false)
+
+  // get all chatsRef
+  React.useEffect(() => {
+    const fetch = async () => {
+      const roomsRef = doc(firestore, 'rooms', chat.roomId)
+      const res = await getDoc(roomsRef)
+      const data = res.data()
+      setChatsRef(data?.chat)
+    }
+    fetch()
+  }, [chat.roomId, isChanged])
+
+  // get all Chat
+  React.useEffect(() => {
+    const promisesUsers = chatsRef?.map(async ref => {
+      const res = await getDoc(ref)
+      return res.data()
+    })
+    Promise.all(promisesUsers).then(data => {
+      setMessages(data)
+    })
+  }, [chatsRef])
+
+  // realtime
+  React.useEffect(() => {
+    const listener = () => {
+      const ref = collection(firestore, 'chats')
+      return onSnapshot(ref, () => {
+        setIsChanged(!isChanged)
+      })
+    }
+    const unsubscribe = listener()
+    return () => {
+      unsubscribe()
+    }
+  }, [isChanged])
+
+  // read message
+  React.useEffect(() => {
+    const readMessage = () => {
+      messages.map(async item => {
+        if (item.userId !== id) {
+          const ref = doc(firestore, 'chats', item._id)
+          const newData = {
+            _id: item._id,
+            isHide: item.isHide,
+            isRead: true,
+            message: item.message,
+            time: item.time,
+            userId: item.userId,
+          }
+          await updateDoc(ref, newData)
+        }
+      })
+    }
+    readMessage()
+  }, [id, messages])
+
+  const handleSendMessage = async () => {
+    const message = currentMessage.trim()
+    const epochTime = Math.floor(new Date().getTime() / 1000.0)
+    if (message !== '') {
+      const messageToSend = {
+        isHide: false,
+        isRead: false,
+        message: message,
+        time: epochTime,
+        userId: id,
+        _id: uuidv4(),
+      }
+      sendMessage(messageToSend)
+      console.info('success : ', messageToSend)
+      setCurrentMessage('')
+      setHeightTextArea(50)
+    }
+  }
+
+  const sendMessage = async data => {
+    const chatsRef = doc(firestore, 'chats', data._id)
+    const roomsRef = doc(firestore, 'rooms', chat.roomId)
+
+    try {
+      await setDoc(chatsRef, data)
+      const res = await getDoc(roomsRef)
+      const fieldChat = res.data()?.chat
+      fieldChat.push(chatsRef)
+      await updateDoc(roomsRef, {
+        ...res.data(),
+        chat: fieldChat,
+      })
+      console.info(fieldChat)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  const handleChange = e => {
+    setCurrentMessage(e.target.value)
+    setHeightTextArea(e.target.scrollHeight)
+    if (e.target.scrollHeight <= 50) {
+      setHeightTextArea(50)
+    }
+    if (e.target.value.length <= 20) {
+      setHeightTextArea(50)
+    }
+  }
+
+  const handleKeyDown = e => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSendMessage()
+      setHeightTextArea(50)
+    } else if (e.key === 'Backspace') {
+      if (e.target.scrollHeight <= 50) {
+        console.log()
+        setHeightTextArea(50)
+      } else {
+        setHeightTextArea(e.target.scrollHeight - 10)
+      }
+    }
+  }
 
   return (
-    <div className="bg-[#F6F6F6] w-full h-full">
+    <div className="bg-[#F6F6F6] w-full h-full relative">
       <div className="flex items-center justify-between px-[25px] h-24 bg-white">
         <div className="flex items-center gap-[20px]">
           <SlArrowLeft
@@ -77,18 +180,18 @@ export default function RoomChat() {
           />
           <div className="flex gap-[14px] items-center">
             <img
-              src="https://picsum.photos/50/50?random=1"
-              alt={params.name}
+              src={chat.imgProfile}
+              alt={chat.name}
               className="rounded-full"
               width={50}
               height={50}
             />
             <div className="flex flex-col items-start gap-[3px]">
               <h1 className="font-semibold text-[15px] capitalize">
-                {params.name}
+                {chat.name}
               </h1>
               <p className="font-normal text-[12px] text-[#A0A0A0]">
-                {params.name}@gmail.com
+                {chat.email}
               </p>
             </div>
           </div>
@@ -105,29 +208,48 @@ export default function RoomChat() {
         </div>
       </div>
       <ScrollToBottom className="px-[25px] flex flex-col gap-3">
-        {messages
-          .sort((a, b) => a._id - b._id)
-          .map((data, i) =>
-            data.email === email ? (
-              <Me data={data} key={i} />
-            ) : (
-              <div key={i}>
-                <div className="p-[17px] bg-white rounded-[15px] text-[12px] whitespace-normal font-medium w-max max-w-[70%]">
-                  {data.isHide ? (
-                    <i className="text-[#BCBCBC] font-normal">
-                      Message has been hidden
-                    </i>
-                  ) : (
-                    data.message
-                  )}
-                </div>
-                <p className="font-medium text-[9px] text-[#BCBCBC] mt-1 ml-1">
-                  {data.timestapm}{' '}
-                </p>
+        {messages?.map((data, i) =>
+          data.userId === id ? (
+            <Me data={data} key={i} />
+          ) : (
+            <div key={i}>
+              <div className="p-[17px] bg-white rounded-[15px] text-[12px] whitespace-normal font-medium w-max max-w-[70%]">
+                {data.isHide ? (
+                  <i className="text-[#BCBCBC] font-normal">
+                    Message has been hidden
+                  </i>
+                ) : (
+                  data.message
+                )}
               </div>
-            )
-          )}
+              <p className="font-medium text-[9px] text-[#BCBCBC] mt-1 ml-1">
+                {converterTimestamp(data.time)}
+              </p>
+            </div>
+          )
+        )}
       </ScrollToBottom>
+      <div className="absolute bottom-0 w-full">
+        <div className="w-full relative h-[106px] bg-white py-[23px] px-[25px] flex justify-between gap-3 items-center">
+          <textarea
+            typeof="text"
+            placeholder="Type here.."
+            value={currentMessage}
+            maxLength={300}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            className={`rounded-xl bg-[#f6f6f6] h-[${heightTextArea}px] outline-none resize-none py-3 px-5 flex-grow`}
+          />
+          {currentMessage.trim().replace(' ', '').length > 0 && (
+            <div className="w-[47px] h-[47px] rounded-full bg-blue-500 cursor-pointer grid place-items-center hover:shadow-lg transition-all">
+              <BsSend
+                onClick={handleSendMessage}
+                className="w-5 h-5 text-white"
+              />
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -158,7 +280,7 @@ function Me({ data }) {
         ) : null}
       </div>
       <p className="font-medium text-[9px] text-[#BCBCBC] mt-1 ml-1 inline-flex items-center gap-1">
-        {data.timestapm}
+        {converterTimestamp(data.time)}
         <BsCheckAll
           className={clsx(
             'w-4 h-4 mb-[3px]',

@@ -17,10 +17,16 @@ import { showStartChat } from '../redux/actions/popup'
 import {
   DocumentData,
   DocumentReference,
+  DocumentSnapshot,
+  collection,
   doc,
   getDoc,
+  getDocs,
+  onSnapshot,
 } from 'firebase/firestore'
 import converterTimestamp from '../utils/converterTimestamp'
+import { setRoomChat } from '../redux/actions/chat'
+// import { useQuery, useMutation } from 'react-query'
 
 interface State {
   user: {
@@ -46,6 +52,9 @@ export default function Home() {
   const [users, setUsers] = React.useState<DocumentData | undefined>([])
   const [chats, setChats] = React.useState<DocumentData | undefined>([])
   const [listRoom, setListRoom] = React.useState<DocumentData | undefined>([])
+  const [roomsId, setRoomsId] = React.useState<DocumentData>([])
+  const [usersId, setUsersId] = React.useState<DocumentData>([])
+  const [isChanged, setIsChanged] = React.useState<boolean>(false)
 
   // Ngambil roomsRef dari users
   React.useEffect(() => {
@@ -54,8 +63,8 @@ export default function Home() {
       const data = await getDoc(ref)
       setRoomsRef(data.data()?.rooms)
     }
-    fetch()
-  }, [user.id])
+    user.id && fetch()
+  }, [user.id, isChanged])
 
   React.useEffect(() => {
     // Ngambil usersRef dari roomsRef
@@ -125,32 +134,71 @@ export default function Home() {
     fetchData()
   }, [chatsRef])
 
+  // get RoomsId
+  React.useEffect(() => {
+    const promisesRooms = roomsRef?.map(async ref => {
+      const res = await getDoc(ref)
+      return res.id
+    })
+    Promise.all(promisesRooms).then(data => {
+      setRoomsId(data)
+    })
+  }, [roomsRef])
+
+  // get UsersId
+  React.useEffect(() => {
+    const allUsersRef = collection(firestore, 'users')
+    const allUsers = getDocs(allUsersRef)
+    allUsers.then(data => {
+      const userIds = data.docs
+        .map((doc: DocumentSnapshot<DocumentData>) => {
+          const matchedUser = users?.find(u => u.email === doc.data()?.email)
+          if (matchedUser) {
+            return doc.id
+          }
+        })
+        .filter(Boolean)
+      setUsersId(userIds)
+    })
+  }, [roomsRef, users])
+
   // merged
   React.useEffect(() => {
     if (users && chats) {
       const merged = users.map((item, index) => ({
         ...item,
         detailMessage: chats[index],
+        roomId: roomsId[index],
+        id: usersId[index],
       }))
       setListRoom(merged)
     }
-  }, [users, chats])
+  }, [users, chats, roomsId, usersId])
+
+  // realtime
+  React.useEffect(() => {
+    const listener = () => {
+      const ref = collection(firestore, 'users')
+      return onSnapshot(ref, () => {
+        setIsChanged(!isChanged)
+      })
+    }
+    const unsubscribe = listener()
+    return () => {
+      unsubscribe()
+    }
+  }, [isChanged])
 
   // log check
   React.useEffect(() => {
-    console.info('roomsRef : ', roomsRef)
-    console.info('chatsRef : ', chatsRef)
-    console.info('usersRef : ', usersRef)
-    console.info('users : ', users)
-    console.info('chats : ', chats)
     console.info('listRoom : ', listRoom)
-  }, [chats, chatsRef, listRoom, roomsRef, users, usersRef])
+  }, [listRoom])
 
   const signOutFromApp = () => {
     signOut(auth)
       .then(() => {
-        dispatch(deleteUserInfo())
         navigate('/login')
+        dispatch(deleteUserInfo())
       })
       .catch(err => {
         console.error(err)
@@ -229,7 +277,18 @@ export default function Home() {
           <div
             key={i}
             className="flex justify-between items-center py-3 cursor-pointer px-[25px] hover:bg-gray-100"
-            onClick={() => navigate(`/${data.name}`)}>
+            onClick={() => {
+              dispatch(
+                setRoomChat({
+                  roomId: data.roomId,
+                  userId: data.id,
+                  name: data.name,
+                  imgProfile: data.imgProfile,
+                  email: data.email,
+                })
+              )
+              navigate(`/chat`)
+            }}>
             <div className="flex gap-[20px] items-center">
               <img
                 src={data.imgProfile}
@@ -242,7 +301,7 @@ export default function Home() {
                 <h1 className="font-semibold text-[15px] capitalize">
                   {data.name}
                 </h1>
-                {data.detailMessage.length > 0 ? (
+                {data.detailMessage?.length > 0 ? (
                   <p className="font-normal text-[12px] text-[#A0A0A0]">
                     {data.detailMessage[data.detailMessage.length - 1].message}
                   </p>
@@ -253,12 +312,16 @@ export default function Home() {
               <div className="flex flex-col items-end gap-[5px]">
                 <p className="font-normal text-[12px] text-[#A0A0A0]">
                   {converterTimestamp(
-                    data?.detailMessage[data.detailMessage.length - 1].timestamp
+                    data?.detailMessage[data.detailMessage.length - 1].time
                   )}
                 </p>
                 {data?.detailMessage[data.detailMessage.length - 1].userId !==
                 user.id ? (
-                  <div className="grid place-items-center w-5 h-5 rounded-full bg-[#D24140] text-white font-semibold text-[10px] py-.5">
+                  <div
+                    className={clsx(
+                      'grid place-items-center w-5 h-5 rounded-full bg-[#D24140] text-white font-semibold text-[10px] py-.5',
+                      countLastMessage(data.detailMessage) < 1 && 'invisible'
+                    )}>
                     {countLastMessage(data.detailMessage)}
                   </div>
                 ) : (

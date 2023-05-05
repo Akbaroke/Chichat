@@ -6,12 +6,14 @@ const initialState = {
   name: null,
   imgProfile: null,
   email: null,
+  friendList: [],
 }
 
 const reducerChat = (state = initialState, action) => {
   switch (action.type) {
     case ActionType.SET_ROOMCHAT:
       return {
+        ...state,
         roomId: action.payload.roomId,
         userId: action.payload.userId,
         name: action.payload.name,
@@ -20,6 +22,11 @@ const reducerChat = (state = initialState, action) => {
       }
     case ActionType.DELETE_ROOMCHAT:
       return initialState
+    case ActionType.SET_FRIENDLIST:
+      return {
+        ...state,
+        friendList: action.payload.friendList,
+      }
     default:
       return state
   }

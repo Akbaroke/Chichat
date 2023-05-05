@@ -22,3 +22,8 @@ export const setRoomChat = ({
 export const deleteRoomChat = () => ({
   type: ActionType.DELETE_ROOMCHAT,
 })
+
+export const setFriendList = friendList => ({
+  type: ActionType.SET_FRIENDLIST,
+  payload: { friendList },
+})

@@ -25,8 +25,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore'
 import converterTimestamp from '../utils/converterTimestamp'
-import { setRoomChat } from '../redux/actions/chat'
-
+import { setFriendList, setRoomChat } from '../redux/actions/chat'
 
 interface State {
   user: {
@@ -46,18 +45,27 @@ export default function Home() {
   const user = useSelector((state: State) => state.user)
   const [isActiveSearch, setIsActiveSearch] = React.useState(false)
   const [search, setSearch] = React.useState('')
-  const [users, setUsers] = React.useState<DocumentData | undefined>([])
+  const [users, setUsers] = React.useState<DocumentData>([])
   const [chats, setChats] = React.useState<DocumentData>([])
-  const [listRoom, setListRoom] = React.useState<DocumentData | undefined>([])
+  const [listRoom, setListRoom] = React.useState<DocumentData>([])
   const [roomsId, setRoomsId] = React.useState<DocumentData>([])
   const [usersId, setUsersId] = React.useState<DocumentData>([])
 
   React.useEffect(() => {
-    const unsubscribe = onSnapshot(collection(firestore, 'rooms'), () => {
-      console.info('changed')
+    const unsubscribeRooms = onSnapshot(collection(firestore, 'rooms'), () => {
+      console.info('rooms changed')
       fetch()
     })
-    return unsubscribe
+
+    const unsubscribeUsers = onSnapshot(collection(firestore, 'users'), () => {
+      console.info('users changed')
+      fetch()
+    })
+
+    return () => {
+      unsubscribeRooms()
+      unsubscribeUsers()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -74,6 +82,20 @@ export default function Home() {
       setListRoom(merged)
     }
   }, [users, chats, roomsId, usersId])
+
+  React.useEffect(() => {
+    if (listRoom?.length > 0) {
+      const data = listRoom.map(val => ({
+        roomId: val.roomId,
+        userId: val.id,
+        name: val.name,
+        imgProfile: val.imgProfile,
+        email: val.email,
+      }))
+
+      dispatch(setFriendList(data))
+    }
+  }, [dispatch, listRoom])
 
   // Ngambil roomsRef dari users
   const fetch = async () => {
@@ -240,77 +262,85 @@ export default function Home() {
         </div>
       )}
       <div>
-        {filteredData?.map((data, i) => (
-          <div
-            key={i}
-            className="flex justify-between items-center py-3 cursor-pointer px-[25px] hover:bg-gray-100"
-            onClick={() => {
-              dispatch(
-                setRoomChat({
-                  roomId: data.roomId,
-                  userId: data.id,
-                  name: data.name,
-                  imgProfile: data.imgProfile,
-                  email: data.email,
-                })
-              )
-              navigate(`/chat`)
-            }}>
-            <div className="flex gap-[20px] items-center">
-              <img
-                src={data.imgProfile}
-                alt={data.name}
-                className="rounded-full"
-                width={60}
-                height={60}
-              />
-              <div className="flex flex-col items-start gap-[5px]">
-                <h1 className="font-semibold text-[15px] capitalize">
-                  {data.name}
-                </h1>
-                {data.detailMessage?.length > 0 ? (
+        {filteredData?.map((data, i) => {
+          return (
+            <div
+              key={i}
+              className="flex justify-between items-center py-3 cursor-pointer px-[25px] hover:bg-gray-100"
+              onClick={() => {
+                dispatch(
+                  setRoomChat({
+                    roomId: data.roomId,
+                    userId: data.id,
+                    name: data.name,
+                    imgProfile: data.imgProfile,
+                    email: data.email,
+                  })
+                )
+                navigate(`/chat`)
+              }}>
+              <div className="flex gap-[20px] items-center">
+                <img
+                  src={data.imgProfile}
+                  alt={data.name}
+                  className="rounded-full"
+                  width={60}
+                  height={60}
+                />
+                <div className="flex flex-col items-start gap-[5px]">
+                  <h1 className="font-semibold text-[15px] capitalize">
+                    {data.name}
+                  </h1>
+                  {data.detailMessage?.length > 0 ? (
+                    <p className="font-normal text-[12px] text-[#A0A0A0] truncate max-w-[150px]">
+                      {
+                        data.detailMessage[data.detailMessage.length - 1]
+                          .message
+                      }
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              {data.detailMessage.length > 0 ? (
+                <div className="flex flex-col items-end gap-[5px]">
                   <p className="font-normal text-[12px] text-[#A0A0A0]">
-                    {data.detailMessage[data.detailMessage.length - 1].message}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-            {data.detailMessage.length > 0 ? (
-              <div className="flex flex-col items-end gap-[5px]">
-                <p className="font-normal text-[12px] text-[#A0A0A0]">
-                  {converterTimestamp(
-                    data?.detailMessage[data.detailMessage.length - 1].time
-                  )}
-                </p>
-                {data?.detailMessage[data.detailMessage.length - 1].userId !==
-                user.id ? (
-                  <div
-                    className={clsx(
-                      'grid place-items-center w-5 h-5 rounded-full bg-[#D24140] text-white font-semibold text-[10px] py-.5',
-                      countLastMessage(data.detailMessage) < 1 && 'invisible'
-                    )}>
-                    {countLastMessage(data.detailMessage)}
-                  </div>
-                ) : (
-                  <BsCheckAll
-                    className={clsx(
-                      'w-5 h-5',
-                      data?.detailMessage[data.detailMessage.length - 1].isRead
-                        ? 'text-[#70C996]'
-                        : 'text-[#C2C2C2]'
+                    {converterTimestamp(
+                      data?.detailMessage[data.detailMessage.length - 1].time
                     )}
-                  />
-                )}
-              </div>
-            ) : null}
-          </div>
-        ))}
+                  </p>
+                  {data?.detailMessage[data.detailMessage.length - 1].userId !==
+                  user.id ? (
+                    <div
+                      className={clsx(
+                        'grid place-items-center w-5 h-5 rounded-full bg-[#D24140] text-white font-semibold text-[10px] py-.5',
+                        countLastMessage(data.detailMessage) < 1 && 'invisible'
+                      )}>
+                      {countLastMessage(data.detailMessage)}
+                    </div>
+                  ) : (
+                    <BsCheckAll
+                      className={clsx(
+                        'w-5 h-5',
+                        data?.detailMessage[data.detailMessage.length - 1]
+                          .isRead
+                          ? 'text-[#70C996]'
+                          : 'text-[#C2C2C2]'
+                      )}
+                    />
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
       </div>
-      <div
-        className="grid place-items-center bg-blue-500 text-white rounded-full w-12 h-12 cursor-pointer shadow-md absolute left-1/2 transform -translate-x-1/2 bottom-10"
-        onClick={() => dispatch(showStartChat())}>
-        <AiOutlinePlus className="w-6 h-6" />
-      </div>
+      {listRoom ? (
+        <div
+          className="grid place-items-center bg-blue-500 text-white rounded-full w-12 h-12 cursor-pointer shadow-md absolute left-1/2 transform -translate-x-1/2 bottom-10"
+          onClick={() => dispatch(showStartChat())}>
+          <AiOutlinePlus className="w-6 h-6" />
+        </div>
+      ) : null}
     </div>
   )
 }

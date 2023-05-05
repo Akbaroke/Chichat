@@ -13,12 +13,17 @@
   text-decoration: none;
   border: none;
   outline: none;
+  box-sizing: border-box;
 }
 
 html {
   box-sizing: border-box;
 }
 
-textarea::-webkit-scrollbar {
-    display: none !important;
+body{
+  overflow-x: hidden;
+}
+
+*::-webkit-scrollbar {
+  display: none !important;
 }

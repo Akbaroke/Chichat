@@ -21,6 +21,8 @@ import {
 } from 'react-icons/all'
 import { Tooltip } from 'flowbite-react'
 import { v4 as uuidv4 } from 'uuid'
+import { useNavigate } from 'react-router-dom'
+import { setRoomChat } from '../redux/actions/chat'
 
 interface State {
   popup: {
@@ -30,12 +32,25 @@ interface State {
     id: string
     email: string
   }
+  chat: {
+    friendList: FriendList
+  }
 }
 
+type FriendList = {
+  roomId: string
+  userId: string
+  name: string
+  imgProfile: string
+  email: string
+}[]
+
 export default function ModalStartChat() {
+  const navigate = useNavigate()
   const dispatch = useDispatch()
   const { isModalStartChat } = useSelector((state: State) => state.popup)
   const user = useSelector((state: State) => state.user)
+  const chat = useSelector((state: State) => state.chat)
   const [email, setEmail] = React.useState('')
   const [idUserTarget, setIdUserTarget] = React.useState('')
   const [isLoadingCheckEmail, setIsLoadingCheckEmail] = React.useState(false)
@@ -69,47 +84,75 @@ export default function ModalStartChat() {
   }
 
   const handleclick = async () => {
-    const idRoom = uuidv4()
-    const usersRef = [
-      doc(firestore, 'users', user.id),
-      doc(firestore, 'users', idUserTarget),
-    ]
-
-    // create room
-    try {
-      const roomsRef = doc(firestore, 'rooms', idRoom)
-      await setDoc(roomsRef, {
-        chat: [],
-        user: usersRef,
+    // cek apakah email sudah terdaftar
+    if (checkAlready(chat.friendList)[0]) {
+      const datas: FriendList = chat.friendList
+      datas.map((val, i) => {
+        if (val.email === email) {
+          dispatch(
+            setRoomChat({
+              roomId: chat.friendList[i].roomId,
+              userId: chat.friendList[i].userId,
+              name: chat.friendList[i].name,
+              imgProfile: chat.friendList[i].imgProfile,
+              email: chat.friendList[i].email,
+            })
+          )
+        }
       })
-      console.info('Room created Successfully')
-    } catch (error) {
-      console.error(error)
-    }
+      navigate('/chat')
+    } else {
+      const idRoom = uuidv4()
+      const usersRef = [
+        doc(firestore, 'users', user.id),
+        doc(firestore, 'users', idUserTarget),
+      ]
 
-    // update data user
-    try {
-      const promises = usersRef.map(async ref => {
-        const res = await getDoc(ref)
-        const newRooms = [
-          ...(res.data()?.rooms ?? []),
-          doc(firestore, 'rooms', idRoom),
-        ]
-        console.info(res.data())
-        await updateDoc(ref, {
-          ...res.data(),
-          rooms: newRooms,
+      // create room
+      try {
+        const roomsRef = doc(firestore, 'rooms', idRoom)
+        await setDoc(roomsRef, {
+          chat: [],
+          user: usersRef,
         })
-      })
+        console.info('Room created Successfully')
+      } catch (error) {
+        console.error(error)
+      }
 
-      await Promise.all(promises)
-      console.info('Users Update Successful')
-    } catch (error) {
-      console.error(error)
+      // update data user
+      try {
+        const promises = usersRef.map(async ref => {
+          const res = await getDoc(ref)
+          const newRooms = [
+            ...(res.data()?.rooms ?? []),
+            doc(firestore, 'rooms', idRoom),
+          ]
+          await updateDoc(ref, {
+            ...res.data(),
+            rooms: newRooms,
+          })
+        })
+
+        await Promise.all(promises)
+        console.info('Users Update Successful')
+      } catch (error) {
+        console.error(error)
+      }
+
+      dispatch(hideStartChat())
+      // navigate('/chat')
+      setEmail('')
     }
+  }
 
-    dispatch(hideStartChat())
-    setEmail('')
+  const checkAlready = datas => {
+    return datas.map(val => {
+      if (val.email === email) {
+        return true
+      }
+      return false
+    })
   }
 
   return (
@@ -157,6 +200,7 @@ export default function ModalStartChat() {
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     onKeyUp={handleOnChange}
+                    autoFocus={isModalStartChat ? true : false}
                   />
                   {email.length > 0 ? (
                     <div className="absolute right-10 bottom-4">

@@ -18,7 +18,6 @@ import {
 } from 'react-icons/all'
 import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
-import ScrollToBottom from 'react-scroll-to-bottom'
 import { firestore } from '../config/firebase'
 import { v4 as uuidv4 } from 'uuid'
 import converterTimestamp from '../utils/converterTimestamp'
@@ -46,44 +45,17 @@ export default function RoomChat() {
   const [messages, setMessages] = React.useState<DocumentData>([])
   const [currentMessage, setCurrentMessage] = React.useState('')
   const [heightTextArea, setHeightTextArea] = React.useState(50)
-  const [chatsRef, setChatsRef] = React.useState<DocumentData | undefined>([])
-  const [isChanged, setIsChanged] = React.useState<boolean>(false)
-
-  // get all chatsRef
-  React.useEffect(() => {
-    const fetch = async () => {
-      const roomsRef = doc(firestore, 'rooms', chat.roomId)
-      const res = await getDoc(roomsRef)
-      const data = res.data()
-      setChatsRef(data?.chat)
-    }
-    fetch()
-  }, [chat.roomId, isChanged])
-
-  // get all Chat
-  React.useEffect(() => {
-    const promisesUsers = chatsRef?.map(async ref => {
-      const res = await getDoc(ref)
-      return res.data()
-    })
-    Promise.all(promisesUsers).then(data => {
-      setMessages(data)
-    })
-  }, [chatsRef])
+  const bodyChat = React.useRef(null)
 
   // realtime
   React.useEffect(() => {
-    const listener = () => {
-      const ref = collection(firestore, 'chats')
-      return onSnapshot(ref, () => {
-        setIsChanged(!isChanged)
-      })
-    }
-    const unsubscribe = listener()
-    return () => {
-      unsubscribe()
-    }
-  }, [isChanged])
+    const unsubscribe = onSnapshot(collection(firestore, 'chats'), () => {
+      console.info('changed')
+      fetch()
+    })
+    return unsubscribe
+    // eslint-disable-next-line
+  }, [])
 
   // read message
   React.useEffect(() => {
@@ -105,6 +77,20 @@ export default function RoomChat() {
     }
     readMessage()
   }, [id, messages])
+
+  const fetch = async () => {
+    const roomsRef = doc(firestore, 'rooms', chat.roomId)
+    const res = await getDoc(roomsRef)
+    const data = res.data()
+    const chatsRef = data?.chat
+    const promisesUsers = chatsRef?.map(async ref => {
+      const res = await getDoc(ref)
+      return res.data()
+    })
+    Promise.all(promisesUsers).then(data => {
+      setMessages(data)
+    })
+  }
 
   const handleSendMessage = async () => {
     const message = currentMessage.trim()
@@ -139,6 +125,7 @@ export default function RoomChat() {
         chat: fieldChat,
       })
       console.info(fieldChat)
+      fetch()
     } catch (error) {
       console.error(error)
     }
@@ -171,8 +158,8 @@ export default function RoomChat() {
   }
 
   return (
-    <div className="bg-[#F6F6F6] w-full h-full relative">
-      <div className="flex items-center justify-between px-[25px] h-24 bg-white">
+    <div className="bg-[#F6F6F6] flex flex-col" ref={bodyChat}>
+      <div className="flex items-center justify-between px-[25px] h-24 bg-white sticky top-0 z-20">
         <div className="flex items-center gap-[20px]">
           <SlArrowLeft
             onClick={() => navigate(-1)}
@@ -198,22 +185,23 @@ export default function RoomChat() {
         </div>
         <BsThreeDotsVertical className="w-6 h-6 text-[#CBCBCB] cursor-pointer hover:text-black" />
       </div>
-      <div className="py-5">
-        <div className="flex justify-center gap-4 items-center px-[25px]">
-          <span className="w-full h-[1px] rounded-sm bg-[#BCBCBC]/50"></span>
-          <p className="text-[12px] text-[#bcbcbc] whitespace-nowrap">
-            Today, 12 July
-          </p>
-          <span className="w-full h-[1px] rounded-sm bg-[#BCBCBC]/50"></span>
+
+      <div className="px-[25px] flex flex-col gap-3 flex-grow overflow-x-hidden overflow-y-auto pb-[20px]">
+        <div className="py-5">
+          <div className="flex justify-center gap-4 items-center px-[25px]">
+            <span className="w-full h-[1px] rounded-sm bg-[#BCBCBC]/50"></span>
+            <p className="text-[12px] text-[#bcbcbc] whitespace-nowrap">
+              Today, 12 July
+            </p>
+            <span className="w-full h-[1px] rounded-sm bg-[#BCBCBC]/50"></span>
+          </div>
         </div>
-      </div>
-      <ScrollToBottom className="px-[25px] flex flex-col gap-3">
         {messages?.map((data, i) =>
           data.userId === id ? (
             <Me data={data} key={i} />
           ) : (
             <div key={i}>
-              <div className="p-[17px] bg-white rounded-[15px] text-[12px] whitespace-normal font-medium w-max max-w-[70%]">
+              <div className="p-[17px] bg-white rounded-[15px] text-[12px] whitespace-normal break-words font-medium w-max max-w-[70%]">
                 {data.isHide ? (
                   <i className="text-[#BCBCBC] font-normal">
                     Message has been hidden
@@ -228,8 +216,8 @@ export default function RoomChat() {
             </div>
           )
         )}
-      </ScrollToBottom>
-      <div className="absolute bottom-0 w-full">
+      </div>
+      <div className="sticky bottom-0 w-full z-20">
         <div className="w-full relative h-[106px] bg-white py-[23px] px-[25px] flex justify-between gap-3 items-center">
           <textarea
             typeof="text"
@@ -271,7 +259,7 @@ function Me({ data }) {
       }}>
       <div
         className={clsx(
-          'p-[17px] bg-blue-500 text-white rounded-[15px] text-[12px] whitespace-normal font-medium w-max max-w-[70%] relative',
+          'p-[17px] bg-blue-500 text-white rounded-[15px] text-[12px] whitespace-normal break-words font-medium w-max max-w-[70%] relative',
           data.isHide && 'line-through italic'
         )}>
         {data.message}

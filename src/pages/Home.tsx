@@ -26,7 +26,7 @@ import {
 } from 'firebase/firestore'
 import converterTimestamp from '../utils/converterTimestamp'
 import { setRoomChat } from '../redux/actions/chat'
-// import { useQuery, useMutation } from 'react-query'
+
 
 interface State {
   user: {
@@ -46,35 +46,48 @@ export default function Home() {
   const user = useSelector((state: State) => state.user)
   const [isActiveSearch, setIsActiveSearch] = React.useState(false)
   const [search, setSearch] = React.useState('')
-  const [roomsRef, setRoomsRef] = React.useState<DocumentData | undefined>([])
-  const [usersRef, setUsersRef] = React.useState<DocumentData | undefined>([])
-  const [chatsRef, setChatsRef] = React.useState<DocumentData | undefined>([])
   const [users, setUsers] = React.useState<DocumentData | undefined>([])
-  const [chats, setChats] = React.useState<DocumentData | undefined>([])
+  const [chats, setChats] = React.useState<DocumentData>([])
   const [listRoom, setListRoom] = React.useState<DocumentData | undefined>([])
   const [roomsId, setRoomsId] = React.useState<DocumentData>([])
   const [usersId, setUsersId] = React.useState<DocumentData>([])
-  const [isChanged, setIsChanged] = React.useState<boolean>(false)
+
+  React.useEffect(() => {
+    const unsubscribe = onSnapshot(collection(firestore, 'rooms'), () => {
+      console.info('changed')
+      fetch()
+    })
+    return unsubscribe
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // merged
+  React.useEffect(() => {
+    if (chats?.length > 0 && users?.length > 0) {
+      const merged = users?.map((item, index) => ({
+        ...item,
+        detailMessage: chats[index],
+        roomId: roomsId[index],
+        id: usersId[index],
+      }))
+      console.info('merged :', merged)
+      setListRoom(merged)
+    }
+  }, [users, chats, roomsId, usersId])
 
   // Ngambil roomsRef dari users
-  React.useEffect(() => {
-    const fetch = async () => {
-      const ref = doc(firestore, 'users', user.id)
-      const data = await getDoc(ref)
-      setRoomsRef(data.data()?.rooms)
-    }
-    user.id && fetch()
-  }, [user.id, isChanged])
+  const fetch = async () => {
+    const ref = doc(firestore, 'users', user.id)
+    const data = await getDoc(ref)
+    const roomsRef = data.data()?.rooms
 
-  React.useEffect(() => {
-    // Ngambil usersRef dari roomsRef
     const promisesUsers = roomsRef?.map(async ref => {
       const res = await getDoc(ref)
       const data = res.data() as UsersId
       return data.user
     })
     Promise.all(promisesUsers).then(data => {
-      setUsersRef(data)
+      fetchUsers(data)
     })
 
     // Ngambil chatsRef dari roomsRef
@@ -84,58 +97,10 @@ export default function Home() {
       return data.chat
     })
     Promise.all(promisesChats).then(data => {
-      setChatsRef(data)
+      fetchChats(data)
     })
-  }, [roomsRef])
 
-  // Ngambil users dari usersRef
-  React.useEffect(() => {
-    const fetchData = async () => {
-      const promises = usersRef?.map(async i => {
-        const promisesRef = i.map(async ref => {
-          const res = await getDoc(ref)
-          const data = res.data() as UsersId
-          return data
-        })
-        return Promise.all(promisesRef)
-      })
-      const resultPromise = await Promise.all(promises)
-      const flattenArr = resultPromise.flat()
-      const result = flattenArr.reduce((acc, curr) => {
-        if (curr.email !== user.email) {
-          const existingItem = acc.find(item => item.id === curr.email)
-          if (!existingItem) {
-            acc.push(curr)
-          }
-        }
-        return acc
-      }, [])
-      setUsers(result)
-    }
-
-    fetchData()
-  }, [user.email, user.id, usersRef])
-
-  // Ngambil chats dari chatsRef
-  React.useEffect(() => {
-    const fetchData = async () => {
-      const promises = chatsRef?.map(async i => {
-        const promisesRef = i.map(async ref => {
-          const res = await getDoc(ref)
-          const data = res.data() as UsersId
-          return data
-        })
-        return Promise.all(promisesRef)
-      })
-      const resultPromise = await Promise.all(promises)
-      setChats(resultPromise)
-    }
-
-    fetchData()
-  }, [chatsRef])
-
-  // get RoomsId
-  React.useEffect(() => {
+    // get usersId
     const promisesRooms = roomsRef?.map(async ref => {
       const res = await getDoc(ref)
       return res.id
@@ -143,16 +108,35 @@ export default function Home() {
     Promise.all(promisesRooms).then(data => {
       setRoomsId(data)
     })
-  }, [roomsRef])
+  }
 
-  // get UsersId
-  React.useEffect(() => {
+  const fetchUsers = async usersRef => {
+    const promises = usersRef?.map(async i => {
+      const promisesRef = i.map(async ref => {
+        const res = await getDoc(ref)
+        const data = res.data() as UsersId
+        return data
+      })
+      return Promise.all(promisesRef)
+    })
+    const resultPromise = await Promise.all(promises)
+    const flattenArr = resultPromise.flat()
+    const result = flattenArr.reduce((acc, curr) => {
+      if (curr.email !== user.email) {
+        const existingItem = acc.find(item => item.id === curr.email)
+        if (!existingItem) {
+          acc.push(curr)
+        }
+      }
+      return acc
+    }, [])
+
     const allUsersRef = collection(firestore, 'users')
     const allUsers = getDocs(allUsersRef)
     allUsers.then(data => {
       const userIds = data.docs
         .map((doc: DocumentSnapshot<DocumentData>) => {
-          const matchedUser = users?.find(u => u.email === doc.data()?.email)
+          const matchedUser = result?.find(u => u.email === doc.data()?.email)
           if (matchedUser) {
             return doc.id
           }
@@ -160,39 +144,22 @@ export default function Home() {
         .filter(Boolean)
       setUsersId(userIds)
     })
-  }, [roomsRef, users])
 
-  // merged
-  React.useEffect(() => {
-    if (users && chats) {
-      const merged = users.map((item, index) => ({
-        ...item,
-        detailMessage: chats[index],
-        roomId: roomsId[index],
-        id: usersId[index],
-      }))
-      setListRoom(merged)
-    }
-  }, [users, chats, roomsId, usersId])
+    setUsers(result)
+  }
 
-  // realtime
-  React.useEffect(() => {
-    const listener = () => {
-      const ref = collection(firestore, 'users')
-      return onSnapshot(ref, () => {
-        setIsChanged(!isChanged)
+  const fetchChats = async chatsRef => {
+    const promises = chatsRef?.map(async i => {
+      const promisesRef = i.map(async ref => {
+        const res = await getDoc(ref)
+        const data = res.data() as UsersId
+        return data
       })
-    }
-    const unsubscribe = listener()
-    return () => {
-      unsubscribe()
-    }
-  }, [isChanged])
-
-  // log check
-  React.useEffect(() => {
-    console.info('listRoom : ', listRoom)
-  }, [listRoom])
+      return Promise.all(promisesRef)
+    })
+    const resultPromise = await Promise.all(promises)
+    setChats(resultPromise)
+  }
 
   const signOutFromApp = () => {
     signOut(auth)

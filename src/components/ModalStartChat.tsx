@@ -251,8 +251,3 @@ export default function ModalStartChat() {
     </Transition>
   )
 }
-
-// const usersRef = doc(firestore, 'users', user.email)
-// const data = await getDoc(usersRef)
-// const res = data.data()
-// const room = await res?.rooms

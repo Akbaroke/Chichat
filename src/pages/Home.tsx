@@ -26,6 +26,7 @@ import {
 } from 'firebase/firestore'
 import converterTimestamp from '../utils/converterTimestamp'
 import { setFriendList, setRoomChat } from '../redux/actions/chat'
+import ListRoomsSkeleton from '../components/ListRoomsSkeleton'
 
 interface State {
   user: {
@@ -45,6 +46,7 @@ export default function Home() {
   const user = useSelector((state: State) => state.user)
   const [isActiveSearch, setIsActiveSearch] = React.useState(false)
   const [search, setSearch] = React.useState('')
+  const [isLoading, setIsLoading] = React.useState<boolean>(true)
   const [users, setUsers] = React.useState<DocumentData>([])
   const [chats, setChats] = React.useState<DocumentData>([])
   const [listRoom, setListRoom] = React.useState<DocumentData>([])
@@ -92,44 +94,50 @@ export default function Home() {
         imgProfile: val.imgProfile,
         email: val.email,
       }))
-
       dispatch(setFriendList(data))
     }
   }, [dispatch, listRoom])
 
   // Ngambil roomsRef dari users
   const fetch = async () => {
-    const ref = doc(firestore, 'users', user.id)
-    const data = await getDoc(ref)
-    const roomsRef = data.data()?.rooms
+    try {
+      const ref = doc(firestore, 'users', user.id)
+      const data = await getDoc(ref)
+      const roomsRef = data.data()?.rooms
 
-    const promisesUsers = roomsRef?.map(async ref => {
-      const res = await getDoc(ref)
-      const data = res.data() as UsersId
-      return data.user
-    })
-    Promise.all(promisesUsers).then(data => {
-      fetchUsers(data)
-    })
+      const promisesUsers = roomsRef?.map(async ref => {
+        const res = await getDoc(ref)
+        const data = res.data() as UsersId
+        return data.user
+      })
+      Promise.all(promisesUsers).then(data => {
+        fetchUsers(data)
+      })
 
-    // Ngambil chatsRef dari roomsRef
-    const promisesChats = roomsRef?.map(async ref => {
-      const res = await getDoc(ref)
-      const data = res.data() as UsersId
-      return data.chat
-    })
-    Promise.all(promisesChats).then(data => {
-      fetchChats(data)
-    })
+      // Ngambil chatsRef dari roomsRef
+      const promisesChats = roomsRef?.map(async ref => {
+        const res = await getDoc(ref)
+        const data = res.data() as UsersId
+        return data.chat
+      })
+      Promise.all(promisesChats).then(data => {
+        fetchChats(data)
+      })
 
-    // get usersId
-    const promisesRooms = roomsRef?.map(async ref => {
-      const res = await getDoc(ref)
-      return res.id
-    })
-    Promise.all(promisesRooms).then(data => {
-      setRoomsId(data)
-    })
+      // get usersId
+      const promisesRooms = roomsRef?.map(async ref => {
+        const res = await getDoc(ref)
+        return res.id
+      })
+      Promise.all(promisesRooms).then(data => {
+        setRoomsId(data)
+      })
+
+      setIsLoading(false)
+    } catch (error) {
+      console.error(error)
+      navigate('/login')
+    }
   }
 
   const fetchUsers = async usersRef => {
@@ -261,80 +269,85 @@ export default function Home() {
           </div>
         </div>
       )}
-      <div>
-        {filteredData?.map((data, i) => {
-          return (
-            <div
-              key={i}
-              className="flex justify-between items-center py-3 cursor-pointer px-[25px] hover:bg-gray-100"
-              onClick={() => {
-                dispatch(
-                  setRoomChat({
-                    roomId: data.roomId,
-                    userId: data.id,
-                    name: data.name,
-                    imgProfile: data.imgProfile,
-                    email: data.email,
-                  })
-                )
-                navigate(`/chat`)
-              }}>
-              <div className="flex gap-[20px] items-center">
-                <img
-                  src={data.imgProfile}
-                  alt={data.name}
-                  className="rounded-full"
-                  width={60}
-                  height={60}
-                />
-                <div className="flex flex-col items-start gap-[5px]">
-                  <h1 className="font-semibold text-[15px] capitalize">
-                    {data.name}
-                  </h1>
-                  {data.detailMessage?.length > 0 ? (
-                    <p className="font-normal text-[12px] text-[#A0A0A0] truncate max-w-[150px]">
-                      {
-                        data.detailMessage[data.detailMessage.length - 1]
-                          .message
-                      }
-                    </p>
-                  ) : null}
+      {isLoading ? (
+        <ListRoomsSkeleton cards={5} />
+      ) : (
+        <div>
+          {filteredData?.map((data, i) => {
+            return (
+              <div
+                key={i}
+                className="flex justify-between items-center py-3 cursor-pointer px-[25px] hover:bg-gray-100"
+                onClick={() => {
+                  dispatch(
+                    setRoomChat({
+                      roomId: data.roomId,
+                      userId: data.id,
+                      name: data.name,
+                      imgProfile: data.imgProfile,
+                      email: data.email,
+                    })
+                  )
+                  navigate(`/chat`)
+                }}>
+                <div className="flex gap-[20px] items-center">
+                  <img
+                    src={data.imgProfile}
+                    alt={data.name}
+                    className="rounded-full"
+                    width={60}
+                    height={60}
+                  />
+                  <div className="flex flex-col items-start gap-[5px]">
+                    <h1 className="font-semibold text-[15px] capitalize">
+                      {data.name}
+                    </h1>
+                    {data.detailMessage?.length > 0 ? (
+                      <p className="font-normal text-[12px] text-[#A0A0A0] truncate max-w-[150px]">
+                        {
+                          data.detailMessage[data.detailMessage.length - 1]
+                            .message
+                        }
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-              {data.detailMessage.length > 0 ? (
-                <div className="flex flex-col items-end gap-[5px]">
-                  <p className="font-normal text-[12px] text-[#A0A0A0]">
-                    {converterTimestamp(
-                      data?.detailMessage[data.detailMessage.length - 1].time
-                    )}
-                  </p>
-                  {data?.detailMessage[data.detailMessage.length - 1].userId !==
-                  user.id ? (
-                    <div
-                      className={clsx(
-                        'grid place-items-center w-5 h-5 rounded-full bg-[#D24140] text-white font-semibold text-[10px] py-.5',
-                        countLastMessage(data.detailMessage) < 1 && 'invisible'
-                      )}>
-                      {countLastMessage(data.detailMessage)}
-                    </div>
-                  ) : (
-                    <BsCheckAll
-                      className={clsx(
-                        'w-5 h-5',
-                        data?.detailMessage[data.detailMessage.length - 1]
-                          .isRead
-                          ? 'text-[#70C996]'
-                          : 'text-[#C2C2C2]'
+                {data.detailMessage.length > 0 ? (
+                  <div className="flex flex-col items-end gap-[5px]">
+                    <p className="font-normal text-[12px] text-[#A0A0A0]">
+                      {converterTimestamp(
+                        data?.detailMessage[data.detailMessage.length - 1].time
                       )}
-                    />
-                  )}
-                </div>
-              ) : null}
-            </div>
-          )
-        })}
-      </div>
-      {listRoom ? (
+                    </p>
+                    {data?.detailMessage[data.detailMessage.length - 1]
+                      .userId !== user.id ? (
+                      <div
+                        className={clsx(
+                          'grid place-items-center w-5 h-5 rounded-full bg-[#D24140] text-white font-semibold text-[10px] py-.5',
+                          countLastMessage(data.detailMessage) < 1 &&
+                            'invisible'
+                        )}>
+                        {countLastMessage(data.detailMessage)}
+                      </div>
+                    ) : (
+                      <BsCheckAll
+                        className={clsx(
+                          'w-5 h-5',
+                          data?.detailMessage[data.detailMessage.length - 1]
+                            .isRead
+                            ? 'text-[#70C996]'
+                            : 'text-[#C2C2C2]'
+                        )}
+                      />
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {!isLoading ? (
         <div
           className="grid place-items-center bg-blue-500 text-white rounded-full w-12 h-12 cursor-pointer shadow-md absolute left-1/2 transform -translate-x-1/2 bottom-10"
           onClick={() => dispatch(showStartChat())}>

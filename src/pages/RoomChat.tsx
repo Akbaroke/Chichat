@@ -124,7 +124,6 @@ export default function RoomChat() {
         ...res.data(),
         chat: fieldChat,
       })
-      console.info(fieldChat)
       fetch()
     } catch (error) {
       console.error(error)
@@ -161,7 +160,6 @@ export default function RoomChat() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const todayTimestamp = today.getTime()
-  console.info({ today, todayTimestamp })
 
   // Mendefinisikan fungsi untuk membandingkan tanggal pesan chat
   const isSameDay = (timestamp1: number, timestamp2: number): boolean => {
@@ -176,14 +174,12 @@ export default function RoomChat() {
 
   // Mengurutkan pesan chat berdasarkan tanggal terbaru
   const sortedMessages = messages.sort((a, b) => a.time - b.time)
-  console.info({ sortedMessages })
 
   // Memisahkan pesan chat berdasarkan tanggal
   const messagesByDay: Record<number, typeof sortedMessages> = {}
   sortedMessages.forEach(message => {
     const timestamp = message.time
     const messageDay = new Date(timestamp * 1000.0)
-    console.info({ timestamp, messageDay })
     messageDay.setHours(0, 0, 0, 0)
     const messageDayTimestamp = messageDay.getTime()
     if (!messagesByDay[messageDayTimestamp]) {
@@ -213,7 +209,7 @@ export default function RoomChat() {
               <h1 className="font-semibold text-[15px] capitalize">
                 {chat.name}
               </h1>
-              <p className="font-normal text-[12px] text-[#A0A0A0]">
+              <p className="font-normal text-[12px] text-[#A0A0A0] truncate max-w-[200px]">
                 {chat.email}
               </p>
             </div>
@@ -339,25 +335,4 @@ function Me({ data }) {
       </p>
     </div>
   )
-}
-
-{
-  /* data.userId === id ? (
-  <Me data={data} key={i} />
-) : (
-  <div key={i}>
-    <div className="p-[17px] bg-white rounded-[15px] text-[12px] whitespace-normal break-words font-medium w-max max-w-[70%]">
-      {data.isHide ? (
-        <i className="text-[#BCBCBC] font-normal">
-          Message has been hidden
-        </i>
-      ) : (
-        data.message
-      )}
-    </div>
-    <p className="font-medium text-[9px] text-[#BCBCBC] mt-1 ml-1">
-      {converterTimestamp(data.time)}
-    </p>
-  </div>
-) */
 }

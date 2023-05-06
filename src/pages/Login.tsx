@@ -93,26 +93,27 @@ export default function Login() {
   }
 
   return (
-    <div className="bg-white h-full flex flex-col pb-8">
+    <div className="bg-white h-full flex flex-col">
       <div>
-        <div className="px-9 pt-[50px] z-10 relative">
-          <h1 className="inline-block max-w-[293px] font-semibold text-[35px]">
+        <div className="px-6 sm:px-9 pt-6 sm:pt-[50px] z-10 relative">
+          <h1 className="inline-block max-w-[293px] font-semibold text-[30px] sm:text-[35px] mb-4">
             Make your Communication More fun with
           </h1>
           <ChichatLabel />
         </div>
         <BackgroudChichat />
       </div>
-      <div className="px-[37px] mt-auto">
+      <div className="px-[37px] mt-auto sticky bottom-8">
         <button
           onClick={googleSignIn}
           className={clsx(
-            'bg-white font-medium text-[18px] w-full h-[60px] rounded-full flex items-center justify-center gap-2 transition-all',
-            'hover:shadow-lg hover:border-none',
-            'border border-gray-200'
+            'bg-white w-full h-[60px] rounded-full flex items-center justify-center gap-2 transition-all outline outline-1 outline-gray-300 shadow-lg px-4',
+            'hover:shadow-none hover:border-none'
           )}>
           <FcGoogle className="w-6 h-6" />
-          Continue With Google
+          <p className="font-medium text-[16px] sm:text-[18px] max-w-[100] truncate pt-[2px]">
+            Continue With Google
+          </p>
         </button>
       </div>
     </div>

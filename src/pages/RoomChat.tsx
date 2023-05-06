@@ -22,6 +22,8 @@ import { firestore } from '../config/firebase'
 import { v4 as uuidv4 } from 'uuid'
 import converterTimestamp from '../utils/converterTimestamp'
 import ScrollToBottom from 'react-scroll-to-bottom'
+import Tooltip from '@mui/material/Tooltip'
+import { AnimatePresence, motion } from 'framer-motion'
 
 interface State {
   user: {
@@ -37,6 +39,15 @@ interface State {
     imgProfile: string
     email: string
   }
+}
+
+const variants = {
+  flip: {
+    rotateY: 360,
+    transition: {
+      duration: 0.3,
+    },
+  },
 }
 
 export default function RoomChat() {
@@ -114,6 +125,7 @@ export default function RoomChat() {
   const sendMessage = async data => {
     const chatsRef = doc(firestore, 'chats', data._id)
     const roomsRef = doc(firestore, 'rooms', chat.roomId)
+    const time = Math.floor(new Date().getTime() / 1000.0)
 
     try {
       await setDoc(chatsRef, data)
@@ -123,6 +135,7 @@ export default function RoomChat() {
       await updateDoc(roomsRef, {
         ...res.data(),
         chat: fieldChat,
+        time,
       })
       fetch()
     } catch (error) {
@@ -191,12 +204,16 @@ export default function RoomChat() {
   return (
     <div className="w-full h-full relative bg-[#F6F6F6]">
       {/* Header Chat */}
-      <div className="flex items-center justify-between sticky top-0 px-[25px] h-24 bg-white z-20">
+      <div className="flex items-center justify-between sticky top-0 px-[25px] h-24 bg-white z-20 shadow-sm shadow-[#f6f6f6]">
         <div className="flex items-center gap-[20px]">
-          <SlArrowLeft
-            onClick={() => navigate(-1)}
-            className="w-5 h-5 cursor-pointer"
-          />
+          <Tooltip title="Back" arrow>
+            <div>
+              <SlArrowLeft
+                onClick={() => navigate(-1)}
+                className="w-5 h-5 cursor-pointer"
+              />
+            </div>
+          </Tooltip>
           <div className="flex gap-[14px] items-center">
             <img
               src={chat.imgProfile}
@@ -215,62 +232,74 @@ export default function RoomChat() {
             </div>
           </div>
         </div>
-        <BsThreeDotsVertical className="w-6 h-6 text-[#CBCBCB] cursor-pointer hover:text-black" />
+        <Tooltip title="Setting" arrow>
+          <div>
+            <BsThreeDotsVertical className="w-6 h-6 text-[#CBCBCB] cursor-pointer hover:text-black" />
+          </div>
+        </Tooltip>
       </div>
 
       {/* Body Chat */}
       <ScrollToBottom className="h-full max-h-screen overflow-x-hidden overflow-y-auto">
         <div className="flex flex-col gap-4 px-[25px] pb-52">
-          {Object.entries(messagesByDay).map(([timestamp, messages]) => {
-            const messageDay = new Date(Number(timestamp))
-            const isToday = isSameDay(todayTimestamp, Number(timestamp))
-            const dateText = isToday
-              ? 'Today'
-              : messageDay.toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })
-            return (
-              <div key={timestamp}>
-                <div className="py-5">
-                  <div className="flex justify-center gap-4 items-center px-[25px]">
-                    <span className="w-full h-[1px] rounded-sm bg-[#BCBCBC]/50"></span>
-                    <p className="text-[12px] text-[#bcbcbc] whitespace-nowrap">
-                      {dateText}
-                    </p>
-                    <span className="w-full h-[1px] rounded-sm bg-[#BCBCBC]/50"></span>
-                  </div>
-                </div>
-                {messages.map(message =>
-                  message.userId === id ? (
-                    <Me data={message} key={message._id} />
-                  ) : (
-                    <div key={message._id}>
-                      <div className="p-[17px] bg-white rounded-[15px] text-[12px] whitespace-normal break-words font-medium w-max max-w-[70%]">
-                        {message.isHide ? (
-                          <i className="text-[#BCBCBC] font-normal">
-                            Message has been hidden
-                          </i>
-                        ) : (
-                          message.message
-                        )}
-                      </div>
-                      <p className="font-medium text-[9px] text-[#BCBCBC] mt-1 ml-1">
-                        {converterTimestamp(message.time)}
+          <AnimatePresence>
+            {Object.entries(messagesByDay).map(([timestamp, messages]) => {
+              const messageDay = new Date(Number(timestamp))
+              const isToday = isSameDay(todayTimestamp, Number(timestamp))
+              const dateText = isToday
+                ? 'Today'
+                : messageDay.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })
+              return (
+                <div key={timestamp}>
+                  <div className="py-5">
+                    <div className="flex justify-center gap-4 items-center px-[25px]">
+                      <span className="w-full h-[1px] rounded-sm bg-[#BCBCBC]/50"></span>
+                      <p className="text-[12px] text-[#bcbcbc] whitespace-nowrap">
+                        {dateText}
                       </p>
+                      <span className="w-full h-[1px] rounded-sm bg-[#BCBCBC]/50"></span>
                     </div>
-                  )
-                )}
-              </div>
-            )
-          })}
+                  </div>
+                  {messages.map(message =>
+                    message.userId === id ? (
+                      <Me data={message} key={message._id} />
+                    ) : (
+                      <motion.div
+                        key={message._id}
+                        className="mb-3"
+                        initial={{ opacity: 0, scale: 0 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0 }}
+                        layout>
+                        <div className="p-[17px] bg-white rounded-[15px] text-[12px] whitespace-normal break-words font-medium w-max max-w-[70%]">
+                          {message.isHide ? (
+                            <i className="text-[#BCBCBC] font-normal">
+                              Message has been hidden
+                            </i>
+                          ) : (
+                            message.message
+                          )}
+                        </div>
+                        <p className="font-medium text-[9px] text-[#BCBCBC] mt-[4px] ml-1">
+                          {converterTimestamp(message.time)}
+                        </p>
+                      </motion.div>
+                    )
+                  )}
+                </div>
+              )
+            })}
+          </AnimatePresence>
         </div>
       </ScrollToBottom>
 
       {/* text input Chat */}
-      <div className="w-full bg-white py-[23px] px-[25px] sticky bottom-0 z-10">
+      <div className="w-full bg-white py-[23px] px-[25px] sticky bottom-0 z-10 shadow-sm shadow-[#f6f6f6]">
         <div className="grid grid-cols-[6fr,1fr] gap-3 items-center">
           <textarea
             typeof="text"
@@ -281,18 +310,24 @@ export default function RoomChat() {
             onKeyDown={handleKeyDown}
             className={`rounded-xl bg-[#f6f6f6] h-[${heightTextArea}px] outline-none resize-none py-3 px-5 w-full`}
           />
-          <button
-            className={clsx(
-              'w-[47px] h-[47px] rounded-full bg-blue-500 grid place-items-center transition-all shadow-xl',
-              'hover:shadow-lg',
-              'disabled:bg-gray-400 disabled:shadow-none'
-            )}
-            disabled={
-              currentMessage.trim().replace(' ', '').length > 0 ? false : true
-            }
-            onClick={handleSendMessage}>
-            <BsSend className="w-5 h-5 text-white" />
-          </button>
+          <Tooltip title="Send" placement="top" arrow>
+            <div>
+              <button
+                className={clsx(
+                  'w-[47px] h-[47px] rounded-full bg-blue-500 grid place-items-center transition-all shadow-xl',
+                  'hover:shadow-lg',
+                  'disabled:bg-gray-400 disabled:shadow-none'
+                )}
+                disabled={
+                  currentMessage.trim().replace(' ', '').length > 0
+                    ? false
+                    : true
+                }
+                onClick={handleSendMessage}>
+                <BsSend className="w-5 h-5 text-white" />
+              </button>
+            </div>
+          </Tooltip>
         </div>
       </div>
     </div>
@@ -304,8 +339,8 @@ function Me({ data }) {
   const [hoveringId, setHoveringId] = React.useState('')
 
   return (
-    <div
-      className="flex flex-col text-right items-end "
+    <motion.div
+      className="flex flex-col text-right items-end mb-3"
       onMouseEnter={() => {
         setIsHovering(true)
         setHoveringId(data._id)
@@ -313,26 +348,31 @@ function Me({ data }) {
       onMouseLeave={() => {
         setIsHovering(false)
         setHoveringId(data._id)
-      }}>
+      }}
+      initial={{ opacity: 0, scale: 0 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0 }}
+      layout>
       <div
         className={clsx(
           'p-[17px] bg-blue-500 text-white rounded-[15px] text-[12px] whitespace-normal break-words font-medium w-max max-w-[70%] relative rounded-tr-none text-left',
-          data.isHide && 'line-through italic'
+          data.isHide && 'line-through italic text-opacity-50'
         )}>
         {data.message}
         {isHovering && hoveringId === (data._id as string) ? (
           <BiHide className="absolute top-1 -left-7 transform translate-y-1/2 text-[#BCBCBC] w-5 h-5 cursor-pointer hover:text-black transition-all" />
         ) : null}
       </div>
-      <p className="font-medium text-[9px] text-[#BCBCBC] mt-1 ml-1 inline-flex items-center gap-1">
+      <p className="font-medium text-[9px] text-[#BCBCBC] mt-[2px] ml-1 inline-flex items-center gap-1">
         {converterTimestamp(data.time)}
-        <BsCheckAll
-          className={clsx(
-            'w-4 h-4 mb-[3px]',
-            data.isRead ? 'text-[#70C996]' : 'text-[#C2C2C2]'
-          )}
-        />
+        {data.isRead ? (
+          <motion.div variants={variants} animate="flip">
+            <BsCheckAll className="w-4 h-4 mb-[3px] text-[#70C996]" />
+          </motion.div>
+        ) : (
+          <BsCheckAll className="w-4 h-4 mb-[3px] text-[#C2C2C2]" />
+        )}
       </p>
-    </div>
+    </motion.div>
   )
 }

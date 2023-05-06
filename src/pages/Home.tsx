@@ -27,6 +27,8 @@ import {
 import converterTimestamp from '../utils/converterTimestamp'
 import { setFriendList, setRoomChat } from '../redux/actions/chat'
 import ListRoomsSkeleton from '../components/ListRoomsSkeleton'
+import Tooltip from '@mui/material/Tooltip'
+import { AnimatePresence, motion } from 'framer-motion'
 
 interface State {
   user: {
@@ -38,6 +40,16 @@ interface State {
 interface UsersId {
   user: DocumentReference[]
   chat: DocumentReference[]
+  time: DocumentReference[]
+}
+
+const variants = {
+  flip: {
+    rotateY: 360,
+    transition: {
+      duration: 0.3,
+    },
+  },
 }
 
 export default function Home() {
@@ -52,8 +64,14 @@ export default function Home() {
   const [listRoom, setListRoom] = React.useState<DocumentData>([])
   const [roomsId, setRoomsId] = React.useState<DocumentData>([])
   const [usersId, setUsersId] = React.useState<DocumentData>([])
+  const [times, setTimes] = React.useState<DocumentData>([])
 
   React.useEffect(() => {
+    const unsubscribeChats = onSnapshot(collection(firestore, 'chats'), () => {
+      console.info('chats changed')
+      fetch()
+    })
+
     const unsubscribeRooms = onSnapshot(collection(firestore, 'rooms'), () => {
       console.info('rooms changed')
       fetch()
@@ -67,6 +85,7 @@ export default function Home() {
     return () => {
       unsubscribeRooms()
       unsubscribeUsers()
+      unsubscribeChats()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -79,11 +98,12 @@ export default function Home() {
         detailMessage: chats[index],
         roomId: roomsId[index],
         id: usersId[index],
+        time: times[index],
       }))
       console.info('merged :', merged)
       setListRoom(merged)
     }
-  }, [users, chats, roomsId, usersId])
+  }, [users, chats, roomsId, usersId, times])
 
   React.useEffect(() => {
     if (listRoom?.length > 0) {
@@ -131,6 +151,16 @@ export default function Home() {
       })
       Promise.all(promisesRooms).then(data => {
         setRoomsId(data)
+      })
+
+      // get time
+      const promisesTimes = roomsRef?.map(async ref => {
+        const res = await getDoc(ref)
+        const data = res.data() as UsersId
+        return data.time
+      })
+      Promise.all(promisesTimes).then(data => {
+        setTimes(data)
       })
 
       setIsLoading(false)
@@ -212,9 +242,11 @@ export default function Home() {
     return count
   }
 
-  const filteredData = listRoom?.filter(data =>
+  const sortBySearch = listRoom?.filter(data =>
     data.name.toLowerCase().includes(search.toLowerCase())
   )
+  const sortedByTime = listRoom?.sort((a, b) => b.time - a.time)
+  const resultRooms = search.length > 0 ? sortBySearch : sortedByTime
 
   return (
     <div className="w-full h-full relative">
@@ -222,20 +254,24 @@ export default function Home() {
       {!isActiveSearch ? (
         <div
           className={clsx(
-            'flex justify-between items-center h-[70px] px-[25px] sticky top-0 bg-white shadow-lg shadow-white'
+            'flex justify-between items-center h-[70px] px-[25px] sticky top-0 bg-white shadow-lg shadow-white outline outline-gray-300/40 outline-1'
           )}>
           <h1 className="font-semibold text-[24px]">Chichat</h1>
           <div className="flex gap-2">
-            <button
-              className="w-[42px] h-[42px] bg-white rounded-full flex items-center justify-center text-[#CACACA] hover:text-black transition-all"
-              onClick={() => setIsActiveSearch(true)}>
-              <RiSearchLine className="w-5 h-5" />
-            </button>
-            <button
-              className="w-[42px] h-[42px] bg-white rounded-full flex items-center justify-center text-[#CACACA] hover:text-black transition-all"
-              onClick={signOutFromApp}>
-              <AiOutlineLogout className="w-5 h-5" />
-            </button>
+            <Tooltip title="Search" arrow>
+              <button
+                className="w-[42px] h-[42px] bg-white rounded-full flex items-center justify-center text-[#CACACA] hover:text-black transition-all"
+                onClick={() => setIsActiveSearch(true)}>
+                <RiSearchLine className="w-5 h-5" />
+              </button>
+            </Tooltip>
+            <Tooltip title="Search" arrow>
+              <button
+                className="w-[42px] h-[42px] bg-white rounded-full flex items-center justify-center text-[#CACACA] hover:text-black transition-all"
+                onClick={signOutFromApp}>
+                <AiOutlineLogout className="w-5 h-5" />
+              </button>
+            </Tooltip>
           </div>
         </div>
       ) : (
@@ -272,87 +308,127 @@ export default function Home() {
       {isLoading ? (
         <ListRoomsSkeleton cards={5} />
       ) : (
-        <div>
-          {filteredData?.map((data, i) => {
-            return (
-              <div
-                key={i}
-                className="flex justify-between items-center py-3 cursor-pointer px-[25px] hover:bg-gray-100"
-                onClick={() => {
-                  dispatch(
-                    setRoomChat({
-                      roomId: data.roomId,
-                      userId: data.id,
-                      name: data.name,
-                      imgProfile: data.imgProfile,
-                      email: data.email,
-                    })
-                  )
-                  navigate(`/chat`)
-                }}>
-                <div className="flex gap-[20px] items-center">
-                  <img
-                    src={data.imgProfile}
-                    alt={data.name}
-                    className="rounded-full"
-                    width={60}
-                    height={60}
-                  />
-                  <div className="flex flex-col items-start gap-[5px]">
-                    <h1 className="font-semibold text-[15px] capitalize">
-                      {data.name}
-                    </h1>
-                    {data.detailMessage?.length > 0 ? (
-                      <p className="font-normal text-[12px] text-[#A0A0A0] truncate max-w-[150px]">
-                        {
+        <div className="max-h-[90%] overflow-x-hidden overflow-y-auto">
+          <AnimatePresence>
+            {resultRooms?.map((data, i) => {
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0 }}
+                  className="flex justify-between items-center py-3 cursor-pointer px-[25px] hover:bg-gray-100"
+                  onClick={() => {
+                    dispatch(
+                      setRoomChat({
+                        roomId: data.roomId,
+                        userId: data.id,
+                        name: data.name,
+                        imgProfile: data.imgProfile,
+                        email: data.email,
+                      })
+                    )
+                    navigate(`/chat`)
+                  }}>
+                  <div className="flex gap-[20px] items-center">
+                    <img
+                      src={data.imgProfile}
+                      alt={data.name}
+                      className="rounded-full"
+                      width={60}
+                      height={60}
+                    />
+                    <div className="flex flex-col items-start gap-[5px]">
+                      <h1 className="font-semibold text-[15px] capitalize">
+                        {data.name}
+                      </h1>
+                      {data.detailMessage?.length > 0 ? (
+                        <p
+                          className={clsx(
+                            'font-normal text-[12px] text-[#A0A0A0] truncate max-w-[180px]',
+                            data.detailMessage[data.detailMessage.length - 1]
+                              .isHide &&
+                              data.detailMessage[data.detailMessage.length - 1]
+                                .userId === user.id &&
+                              'italic text-opacity-50',
+                            data.detailMessage[data.detailMessage.length - 1]
+                              .isHide &&
+                              data.detailMessage[data.detailMessage.length - 1]
+                                .userId === user.id &&
+                              'line-through'
+                          )}>
+                          {data.detailMessage[data.detailMessage.length - 1]
+                            .isHide &&
                           data.detailMessage[data.detailMessage.length - 1]
-                            .message
-                        }
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-                {data.detailMessage.length > 0 ? (
-                  <div className="flex flex-col items-end gap-[5px]">
-                    <p className="font-normal text-[12px] text-[#A0A0A0]">
-                      {converterTimestamp(
-                        data?.detailMessage[data.detailMessage.length - 1].time
+                            .userId === user.id
+                            ? data.detailMessage[data.detailMessage.length - 1]
+                                .message
+                            : data.detailMessage[data.detailMessage.length - 1]
+                                .isHide
+                            ? 'Message has been hidden'
+                            : data.detailMessage[data.detailMessage.length - 1]
+                                .message}
+                        </p>
+                      ) : (
+                        <i className="font-normal text-[12px] text-[#70C996] truncate max-w-[150px]">
+                          chat room just create
+                        </i>
                       )}
-                    </p>
-                    {data?.detailMessage[data.detailMessage.length - 1]
-                      .userId !== user.id ? (
-                      <div
-                        className={clsx(
-                          'grid place-items-center w-5 h-5 rounded-full bg-[#D24140] text-white font-semibold text-[10px] py-.5',
-                          countLastMessage(data.detailMessage) < 1 &&
-                            'invisible'
-                        )}>
-                        {countLastMessage(data.detailMessage)}
-                      </div>
-                    ) : (
-                      <BsCheckAll
-                        className={clsx(
-                          'w-5 h-5',
-                          data?.detailMessage[data.detailMessage.length - 1]
-                            .isRead
-                            ? 'text-[#70C996]'
-                            : 'text-[#C2C2C2]'
-                        )}
-                      />
-                    )}
+                    </div>
                   </div>
-                ) : null}
-              </div>
-            )
-          })}
+                  {data.detailMessage.length > 0 ? (
+                    <div className="flex flex-col items-end gap-[5px]">
+                      <p className="font-normal text-[12px] text-[#A0A0A0]">
+                        {converterTimestamp(
+                          data?.detailMessage[data.detailMessage.length - 1]
+                            .time
+                        )}
+                      </p>
+                      {data?.detailMessage[data.detailMessage.length - 1]
+                        .userId !== user.id ? (
+                        <div
+                          className={clsx(
+                            'inline-flex items-center justify-center px-[7px] py-1 text-[10px] font-bold leading-none text-red-100 bg-red-600 rounded-full',
+                            countLastMessage(data.detailMessage) < 1 &&
+                              'invisible'
+                          )}>
+                          {countLastMessage(data.detailMessage)}
+                        </div>
+                      ) : (
+                        <>
+                          {data?.detailMessage[data.detailMessage.length - 1]
+                            .isRead ? (
+                            <motion.div variants={variants} animate="flip">
+                              <BsCheckAll className="w-4 h-4 mb-[3px] text-[#70C996]" />
+                            </motion.div>
+                          ) : (
+                            <BsCheckAll className="w-4 h-4 mb-[3px] text-[#C2C2C2]" />
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-end gap-[5px]">
+                      <p className="font-normal text-[12px] text-[#A0A0A0]">
+                        {converterTimestamp(data.time)}
+                      </p>
+                      <span className="w-5 h-5 invisible"></span>
+                    </div>
+                  )}
+                </motion.div>
+              )
+            })}
+          </AnimatePresence>
         </div>
       )}
       {!isLoading ? (
-        <div
-          className="grid place-items-center bg-blue-500 text-white rounded-full w-12 h-12 cursor-pointer shadow-md absolute left-1/2 transform -translate-x-1/2 bottom-10"
-          onClick={() => dispatch(showStartChat())}>
-          <AiOutlinePlus className="w-6 h-6" />
-        </div>
+        <Tooltip title="Start chat" placement="top" arrow>
+          <div
+            className="grid place-items-center bg-blue-500 text-white rounded-full w-12 h-12 cursor-pointer shadow-md absolute left-1/2 transform -translate-x-1/2 bottom-10"
+            onClick={() => dispatch(showStartChat())}>
+            <AiOutlinePlus className="w-6 h-6" />
+          </div>
+        </Tooltip>
       ) : null}
     </div>
   )

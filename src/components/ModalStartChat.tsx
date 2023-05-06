@@ -110,10 +110,12 @@ export default function ModalStartChat() {
 
       // create room
       try {
+        const time = Math.floor(new Date().getTime() / 1000.0)
         const roomsRef = doc(firestore, 'rooms', idRoom)
         await setDoc(roomsRef, {
           chat: [],
           user: usersRef,
+          time,
         })
         console.info('Room created Successfully')
       } catch (error) {

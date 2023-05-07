@@ -1,8 +1,6 @@
 import * as React from 'react'
 import clsx from 'clsx'
-import BackgroudChichat from '../components/BackgroudChichat'
-import ChichatLabel from '../components/ChichatLabel'
-import { FcGoogle } from 'react-icons/all'
+import { AiOutlineInfoCircle, FcGoogle } from 'react-icons/all'
 import {
   signInWithPopup,
   GoogleAuthProvider,
@@ -11,15 +9,20 @@ import {
 import { auth, firestore } from '../config/firebase'
 import { useDispatch } from 'react-redux'
 import { setUserInfo } from '../redux/actions/user'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
+import LOGO from '../assets/logo.png'
+import LoadingAnimation from '../components/LoadingAnimation'
+import { Tooltip } from '@mui/material'
 
 export default function Login() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const [isLoading, setIsLoading] = React.useState(false)
 
   // function untuk login dengan google
   const googleSignIn = () => {
+    setIsLoading(true)
     const provider = new GoogleAuthProvider()
     signInWithPopup(auth, provider)
       .then(res => {
@@ -34,9 +37,11 @@ export default function Login() {
             foto: user.photoURL,
           })
         )
+        setIsLoading(false)
         navigate('/')
       })
       .catch(err => {
+        setIsLoading(false)
         console.error(err)
       })
   }
@@ -93,29 +98,32 @@ export default function Login() {
   }
 
   return (
-    <div className="bg-white h-full flex flex-col">
-      <div>
-        <div className="px-6 sm:px-9 pt-6 sm:pt-[50px] z-10 relative">
-          <h1 className="inline-block max-w-[293px] font-semibold text-[30px] sm:text-[35px] mb-4">
-            Make your Communication More fun with
-          </h1>
-          <ChichatLabel />
+    <div className="bg-[#2D61A6] w-full h-full flex flex-col justify-center items-center gap-10 relative">
+      <Tooltip title="about" arrow>
+        <Link
+          to="/about"
+          className="absolute top-7 right-7 text-[30px] text-white">
+          <AiOutlineInfoCircle />
+        </Link>
+      </Tooltip>
+      <img src={LOGO} alt="chichat" width={240} className="drop-shadow-lg" />
+      {isLoading ? (
+        <div className="py-4">
+          <LoadingAnimation />
         </div>
-        <BackgroudChichat />
-      </div>
-      <div className="px-[37px] mt-auto sticky bottom-8">
+      ) : (
         <button
+          disabled={isLoading ? true : false}
           onClick={googleSignIn}
           className={clsx(
-            'bg-white w-full h-[60px] rounded-full flex items-center justify-center gap-2 transition-all outline outline-1 outline-gray-300 shadow-lg px-4',
-            'hover:shadow-none hover:border-none'
+            'bg-white py-3 px-4 rounded-lg border border-gray-300 flex justify-center items-center gap-2 max-w-[280px] transition-all w-full'
           )}>
           <FcGoogle className="w-6 h-6" />
-          <p className="font-medium text-[16px] sm:text-[18px] max-w-[100] truncate pt-[2px]">
+          <p className="font-medium text-[14px] max-w-[100] truncate pt-[2px]">
             Continue With Google
           </p>
         </button>
-      </div>
+      )}
     </div>
   )
 }

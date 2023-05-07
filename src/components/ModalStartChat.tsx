@@ -19,10 +19,10 @@ import {
   AiOutlineInfoCircle,
   AiOutlineLoading3Quarters,
 } from 'react-icons/all'
-import { Tooltip } from 'flowbite-react'
 import { v4 as uuidv4 } from 'uuid'
 import { useNavigate } from 'react-router-dom'
 import { setRoomChat } from '../redux/actions/chat'
+import Tooltip from '@mui/material/Tooltip'
 
 interface State {
   popup: {
@@ -212,27 +212,15 @@ export default function ModalStartChat() {
                           <span className="sr-only">Loading...</span>
                         </div>
                       ) : validateEmail === 'Email found' ? (
-                        <Tooltip
-                          content="Email Found"
-                          placement="bottom"
-                          className="whitespace-nowrap"
-                          arrow={false}>
+                        <Tooltip title="Email Found" arrow>
                           <AiOutlineCheckCircle className="text-green-500 cursor-pointer" />
                         </Tooltip>
                       ) : validateEmail === 'Email not found' ? (
-                        <Tooltip
-                          content="Email Not Found"
-                          placement="bottom"
-                          className="whitespace-nowrap"
-                          arrow={false}>
+                        <Tooltip title="Email Not Found" arrow>
                           <AiOutlineCloseCircle className="text-red-600 cursor-pointer" />
                         </Tooltip>
                       ) : (
-                        <Tooltip
-                          content="this Email is yours"
-                          placement="bottom"
-                          className="whitespace-nowrap"
-                          arrow={false}>
+                        <Tooltip title="this Email is yours" arrow>
                           <AiOutlineInfoCircle className="text-yellow-400 cursor-pointer" />
                         </Tooltip>
                       )}

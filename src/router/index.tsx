@@ -3,11 +3,13 @@ import Login from '../pages/Login'
 import Home from '../pages/Home'
 import * as Middleware from '../middlewares'
 import RoomChat from '../pages/RoomChat'
+import About from '../pages/About'
 
 export default function root() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      <Route index path="/login" element={<Login />} />
+      <Route path="/about" element={<About />} />
       <Route
         path="/"
         element={

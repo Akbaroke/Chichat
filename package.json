@@ -19,8 +19,6 @@
     "axios": "^1.3.6",
     "clsx": "^1.2.1",
     "firebase": "^9.20.0",
-    "flowbite": "^1.6.5",
-    "flowbite-react": "^0.4.4",
     "framer-motion": "^10.12.8",
     "react": "^18.2.0",
     "react-content-loader": "^6.2.1",

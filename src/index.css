@@ -11,7 +11,6 @@
   margin: 0;
   outline: none;
   text-decoration: none;
-  border: none;
   outline: none;
   box-sizing: border-box;
 }
@@ -26,4 +25,40 @@ body{
 
 *::-webkit-scrollbar {
   display: none !important;
+}
+
+#loadingAnimation {
+  width: 35px;
+  transform-origin: center;
+  animation: rotate 2s linear infinite;
+}
+
+#loadingAnimation > circle {
+  fill: none;
+  stroke: white;
+  stroke-width: 2;
+  stroke-dasharray: 1, 200;
+  stroke-dashoffset: 0;
+  stroke-linecap: round;
+  animation: dash 1.5s ease-in-out infinite;
+}
+
+@keyframes rotate {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes dash {
+  0% {
+    stroke-dasharray: 1, 200;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 90, 200;
+    stroke-dashoffset: -35px;
+  }
+  100% {
+    stroke-dashoffset: -125px;
+  }
 }

@@ -14,6 +14,7 @@ import {
   BsCheckAll,
   BsSend,
   BsThreeDotsVertical,
+  HiOutlineChatBubbleBottomCenterText,
   SlArrowLeft,
 } from 'react-icons/all'
 import { useSelector } from 'react-redux'
@@ -24,6 +25,8 @@ import converterTimestamp from '../utils/converterTimestamp'
 import ScrollToBottom from 'react-scroll-to-bottom'
 import Tooltip from '@mui/material/Tooltip'
 import { AnimatePresence, motion } from 'framer-motion'
+import ChatSkeleton from '../components/ChatSkeleton'
+import LoadingAnimation from '../components/LoadingAnimation'
 
 interface State {
   user: {
@@ -55,8 +58,10 @@ export default function RoomChat() {
   const { id } = useSelector((state: State) => state.user)
   const chat = useSelector((state: State) => state.chat)
   const [messages, setMessages] = React.useState<DocumentData>([])
-  const [currentMessage, setCurrentMessage] = React.useState('')
-  const [heightTextArea, setHeightTextArea] = React.useState(50)
+  const [currentMessage, setCurrentMessage] = React.useState<string>('')
+  const [heightTextArea, setHeightTextArea] = React.useState<number>(50)
+  const [isLoading, setIsLoading] = React.useState<boolean>(true)
+  const [isLoadingSendMessage, setIsLoadingSendMessage] = React.useState<boolean>(false)
 
   // realtime
   React.useEffect(() => {
@@ -100,10 +105,13 @@ export default function RoomChat() {
     })
     Promise.all(promisesUsers).then(data => {
       setMessages(data)
+      setIsLoading(false)
+      setIsLoadingSendMessage(false)
     })
   }
 
   const handleSendMessage = async () => {
+    setIsLoadingSendMessage(true)
     const message = currentMessage.trim()
     const epochTime = Math.floor(new Date().getTime() / 1000.0)
     if (message !== '') {
@@ -140,7 +148,8 @@ export default function RoomChat() {
       fetch()
     } catch (error) {
       console.error(error)
-    }
+      setIsLoadingSendMessage(false)
+    } 
   }
 
   const handleChange = e => {
@@ -155,16 +164,18 @@ export default function RoomChat() {
   }
 
   const handleKeyDown = e => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      handleSendMessage()
-      setHeightTextArea(50)
-    } else if (e.key === 'Backspace') {
-      if (e.target.scrollHeight <= 50) {
-        console.log()
+    if (currentMessage.trim().replace(' ', '').length > 0) {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        handleSendMessage()
         setHeightTextArea(50)
-      } else {
-        setHeightTextArea(e.target.scrollHeight - 10)
+      } else if (e.key === 'Backspace') {
+        if (e.target.scrollHeight <= 50) {
+          console.log()
+          setHeightTextArea(50)
+        } else {
+          setHeightTextArea(e.target.scrollHeight - 10)
+        }
       }
     }
   }
@@ -241,61 +252,83 @@ export default function RoomChat() {
 
       {/* Body Chat */}
       <ScrollToBottom className="h-full max-h-screen overflow-x-hidden overflow-y-auto">
-        <div className="flex flex-col gap-4 px-[25px] pb-52">
-          <AnimatePresence>
-            {Object.entries(messagesByDay).map(([timestamp, messages]) => {
-              const messageDay = new Date(Number(timestamp))
-              const isToday = isSameDay(todayTimestamp, Number(timestamp))
-              const dateText = isToday
-                ? 'Today'
-                : messageDay.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })
-              return (
-                <div key={timestamp}>
-                  <div className="py-5">
-                    <div className="flex justify-center gap-4 items-center px-[25px]">
-                      <span className="w-full h-[1px] rounded-sm bg-[#BCBCBC]/50"></span>
-                      <p className="text-[12px] text-[#bcbcbc] whitespace-nowrap">
-                        {dateText}
-                      </p>
-                      <span className="w-full h-[1px] rounded-sm bg-[#BCBCBC]/50"></span>
-                    </div>
-                  </div>
-                  {messages.map(message =>
-                    message.userId === id ? (
-                      <Me data={message} key={message._id} />
-                    ) : (
-                      <motion.div
-                        key={message._id}
-                        className="mb-3"
-                        initial={{ opacity: 0, scale: 0 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0 }}
-                        layout>
-                        <div className="p-[17px] bg-white rounded-[15px] text-[12px] whitespace-normal break-words font-medium w-max max-w-[70%]">
-                          {message.isHide ? (
-                            <i className="text-[#BCBCBC] font-normal">
-                              Message has been hidden
-                            </i>
-                          ) : (
-                            message.message
+        {isLoading ? (
+          <ChatSkeleton />
+        ) : (
+          <div className="flex flex-col gap-4 px-[25px] pb-52">
+            <AnimatePresence>
+              {messages.length !== 0 ? (
+                <>
+                  {Object.entries(messagesByDay).map(
+                    ([timestamp, messages]) => {
+                      const messageDay = new Date(Number(timestamp))
+                      const isToday = isSameDay(
+                        todayTimestamp,
+                        Number(timestamp)
+                      )
+                      const dateText = isToday
+                        ? 'Today'
+                        : messageDay.toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })
+                      return (
+                        <div key={timestamp}>
+                          <div className="py-5">
+                            <div className="flex justify-center gap-4 items-center px-[25px]">
+                              <span className="w-full h-[1px] rounded-sm bg-[#BCBCBC]/50"></span>
+                              <p className="text-[12px] text-[#bcbcbc] whitespace-nowrap">
+                                {dateText}
+                              </p>
+                              <span className="w-full h-[1px] rounded-sm bg-[#BCBCBC]/50"></span>
+                            </div>
+                          </div>
+                          {messages.map(message =>
+                            message.userId === id ? (
+                              <Me data={message} key={message._id} />
+                            ) : (
+                              <motion.div
+                                key={message._id}
+                                className="mb-3"
+                                initial={{ opacity: 0, scale: 0 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0 }}
+                                layout>
+                                <div className="p-[17px] bg-white rounded-[15px] text-[12px] whitespace-normal break-words font-medium w-max max-w-[70%]">
+                                  {message.isHide ? (
+                                    <i className="text-[#BCBCBC] font-normal">
+                                      Message has been hidden
+                                    </i>
+                                  ) : (
+                                    message.message
+                                  )}
+                                </div>
+                                <p className="font-medium text-[9px] text-[#BCBCBC] mt-[4px] ml-1">
+                                  {converterTimestamp(message.time)}
+                                </p>
+                              </motion.div>
+                            )
                           )}
                         </div>
-                        <p className="font-medium text-[9px] text-[#BCBCBC] mt-[4px] ml-1">
-                          {converterTimestamp(message.time)}
-                        </p>
-                      </motion.div>
-                    )
+                      )
+                    }
                   )}
-                </div>
-              )
-            })}
-          </AnimatePresence>
-        </div>
+                </>
+              ) : (
+                <motion.div
+                  variants={variants}
+                  animate="flip"
+                  className="flex flex-col justify-center items-center
+                text-[#eaeaea] text-[20px] italic mt-[30%]">
+                  <HiOutlineChatBubbleBottomCenterText className="text-[100px]" />
+                  <p>Still Empty</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </ScrollToBottom>
 
       {/* text input Chat */}
@@ -309,6 +342,9 @@ export default function RoomChat() {
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             className={`rounded-xl bg-[#f6f6f6] h-[${heightTextArea}px] outline-none resize-none py-3 px-5 w-full`}
+            disabled={
+              isLoadingSendMessage ? true : false
+            }
           />
           <Tooltip title="Send" placement="top" arrow>
             <div>
@@ -324,7 +360,11 @@ export default function RoomChat() {
                     : true
                 }
                 onClick={handleSendMessage}>
-                <BsSend className="w-5 h-5 text-white" />
+                {isLoadingSendMessage ? (
+                  <LoadingAnimation width={25} />
+                ) : (
+                  <BsSend className="w-5 h-5 text-white" />
+                )}
               </button>
             </div>
           </Tooltip>

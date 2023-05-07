@@ -16,7 +16,7 @@ export default function About() {
     <div className="flex flex-col gap-8 justify-center items-center p-10">
       <div className="py-3 w-full items-start">
         <Tooltip title="Back" arrow>
-          <div>
+          <div className="w-max">
             <SlArrowLeft
               onClick={() => navigate(-1)}
               className="w-5 h-5 cursor-pointer"

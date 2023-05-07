@@ -4,6 +4,7 @@ import {
   AiOutlineLogout,
   AiOutlinePlus,
   BsCheckAll,
+  HiOutlineChatBubbleBottomCenterText,
   RiSearchLine,
   RxCross2,
 } from 'react-icons/all'
@@ -310,114 +311,135 @@ export default function Home() {
       ) : (
         <div className="max-h-[90%] overflow-x-hidden overflow-y-auto">
           <AnimatePresence>
-            {resultRooms?.map((data, i) => {
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0 }}
-                  className="flex justify-between items-center py-3 cursor-pointer px-[25px] hover:bg-gray-100"
-                  onClick={() => {
-                    dispatch(
-                      setRoomChat({
-                        roomId: data.roomId,
-                        userId: data.id,
-                        name: data.name,
-                        imgProfile: data.imgProfile,
-                        email: data.email,
-                      })
-                    )
-                    navigate(`/chat`)
-                  }}>
-                  <div className="flex gap-[20px] items-center">
-                    <img
-                      src={data.imgProfile}
-                      alt={data.name}
-                      className="rounded-full"
-                      width={60}
-                      height={60}
-                    />
-                    <div className="flex flex-col items-start gap-[5px]">
-                      <h1 className="font-semibold text-[15px] capitalize">
-                        {data.name}
-                      </h1>
-                      {data.detailMessage?.length > 0 ? (
-                        <p
-                          className={clsx(
-                            'font-normal text-[12px] text-[#A0A0A0] truncate max-w-[180px]',
-                            data.detailMessage[data.detailMessage.length - 1]
-                              .isHide &&
+            {resultRooms.length !== 0 ? (
+              <>
+                {resultRooms?.map((data, i) => {
+                  return (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, scale: 0.3 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.3 }}
+                      className="flex justify-between items-center py-3 cursor-pointer px-[25px] hover:bg-gray-100"
+                      onClick={() => {
+                        dispatch(
+                          setRoomChat({
+                            roomId: data.roomId,
+                            userId: data.id,
+                            name: data.name,
+                            imgProfile: data.imgProfile,
+                            email: data.email,
+                          })
+                        )
+                        navigate(`/chat`)
+                      }}>
+                      <div className="flex gap-[20px] items-center">
+                        <img
+                          src={data.imgProfile}
+                          alt={data.name}
+                          className="rounded-full"
+                          width={60}
+                          height={60}
+                        />
+                        <div className="flex flex-col items-start gap-[5px]">
+                          <h1 className="font-semibold text-[15px] capitalize">
+                            {data.name}
+                          </h1>
+                          {data.detailMessage?.length > 0 ? (
+                            <p
+                              className={clsx(
+                                'font-normal text-[12px] text-[#A0A0A0] truncate max-w-[180px]',
+                                data.detailMessage[
+                                  data.detailMessage.length - 1
+                                ].isHide &&
+                                  data.detailMessage[
+                                    data.detailMessage.length - 1
+                                  ].userId === user.id &&
+                                  'italic text-opacity-50',
+                                data.detailMessage[
+                                  data.detailMessage.length - 1
+                                ].isHide &&
+                                  data.detailMessage[
+                                    data.detailMessage.length - 1
+                                  ].userId === user.id &&
+                                  'line-through'
+                              )}>
+                              {data.detailMessage[data.detailMessage.length - 1]
+                                .isHide &&
                               data.detailMessage[data.detailMessage.length - 1]
-                                .userId === user.id &&
-                              'italic text-opacity-50',
-                            data.detailMessage[data.detailMessage.length - 1]
-                              .isHide &&
-                              data.detailMessage[data.detailMessage.length - 1]
-                                .userId === user.id &&
-                              'line-through'
-                          )}>
-                          {data.detailMessage[data.detailMessage.length - 1]
-                            .isHide &&
-                          data.detailMessage[data.detailMessage.length - 1]
-                            .userId === user.id
-                            ? data.detailMessage[data.detailMessage.length - 1]
-                                .message
-                            : data.detailMessage[data.detailMessage.length - 1]
-                                .isHide
-                            ? 'Message has been hidden'
-                            : data.detailMessage[data.detailMessage.length - 1]
-                                .message}
-                        </p>
-                      ) : (
-                        <i className="font-normal text-[12px] text-[#70C996] truncate max-w-[150px]">
-                          chat room just create
-                        </i>
-                      )}
-                    </div>
-                  </div>
-                  {data.detailMessage.length > 0 ? (
-                    <div className="flex flex-col items-end gap-[5px]">
-                      <p className="font-normal text-[12px] text-[#A0A0A0]">
-                        {converterTimestamp(
-                          data?.detailMessage[data.detailMessage.length - 1]
-                            .time
-                        )}
-                      </p>
-                      {data?.detailMessage[data.detailMessage.length - 1]
-                        .userId !== user.id ? (
-                        <div
-                          className={clsx(
-                            'inline-flex items-center justify-center px-[7px] py-1 text-[10px] font-bold leading-none text-red-100 bg-red-600 rounded-full',
-                            countLastMessage(data.detailMessage) < 1 &&
-                              'invisible'
-                          )}>
-                          {countLastMessage(data.detailMessage)}
+                                .userId === user.id
+                                ? data.detailMessage[
+                                    data.detailMessage.length - 1
+                                  ].message
+                                : data.detailMessage[
+                                    data.detailMessage.length - 1
+                                  ].isHide
+                                ? 'Message has been hidden'
+                                : data.detailMessage[
+                                    data.detailMessage.length - 1
+                                  ].message}
+                            </p>
+                          ) : (
+                            <i className="font-normal text-[12px] text-[#70C996] truncate max-w-[150px]">
+                              chat room just create
+                            </i>
+                          )}
+                        </div>
+                      </div>
+                      {data.detailMessage.length > 0 ? (
+                        <div className="flex flex-col items-end gap-[5px]">
+                          <p className="font-normal text-[12px] text-[#A0A0A0]">
+                            {converterTimestamp(
+                              data?.detailMessage[data.detailMessage.length - 1]
+                                .time
+                            )}
+                          </p>
+                          {data?.detailMessage[data.detailMessage.length - 1]
+                            .userId !== user.id ? (
+                            <div
+                              className={clsx(
+                                'inline-flex items-center justify-center px-[7px] py-1 text-[10px] font-bold leading-none text-red-100 bg-red-600 rounded-full',
+                                countLastMessage(data.detailMessage) < 1 &&
+                                  'invisible'
+                              )}>
+                              {countLastMessage(data.detailMessage)}
+                            </div>
+                          ) : (
+                            <>
+                              {data?.detailMessage[
+                                data.detailMessage.length - 1
+                              ].isRead ? (
+                                <motion.div variants={variants} animate="flip">
+                                  <BsCheckAll className="w-4 h-4 mb-[3px] text-[#70C996]" />
+                                </motion.div>
+                              ) : (
+                                <BsCheckAll className="w-4 h-4 mb-[3px] text-[#C2C2C2]" />
+                              )}
+                            </>
+                          )}
                         </div>
                       ) : (
-                        <>
-                          {data?.detailMessage[data.detailMessage.length - 1]
-                            .isRead ? (
-                            <motion.div variants={variants} animate="flip">
-                              <BsCheckAll className="w-4 h-4 mb-[3px] text-[#70C996]" />
-                            </motion.div>
-                          ) : (
-                            <BsCheckAll className="w-4 h-4 mb-[3px] text-[#C2C2C2]" />
-                          )}
-                        </>
+                        <div className="flex flex-col items-end gap-[5px]">
+                          <p className="font-normal text-[12px] text-[#A0A0A0]">
+                            {converterTimestamp(data.time)}
+                          </p>
+                          <span className="w-5 h-5 invisible"></span>
+                        </div>
                       )}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-end gap-[5px]">
-                      <p className="font-normal text-[12px] text-[#A0A0A0]">
-                        {converterTimestamp(data.time)}
-                      </p>
-                      <span className="w-5 h-5 invisible"></span>
-                    </div>
-                  )}
-                </motion.div>
-              )
-            })}
+                    </motion.div>
+                  )
+                })}
+              </>
+            ) : (
+              <motion.div
+                variants={variants}
+                animate="flip"
+                className="flex flex-col justify-center items-center
+              text-[#eaeaea] text-[20px] italic mt-[30%]">
+                <HiOutlineChatBubbleBottomCenterText className="text-[100px]" />
+                <p>Still Empty</p>
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
       )}

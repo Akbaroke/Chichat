@@ -28,7 +28,6 @@ body{
 }
 
 #loadingAnimation {
-  width: 35px;
   transform-origin: center;
   animation: rotate 2s linear infinite;
 }

@@ -1,5 +1,4 @@
 import * as React from 'react'
-import { signOut } from 'firebase/auth'
 import {
   AiOutlineLogout,
   AiOutlinePlus,
@@ -9,13 +8,12 @@ import {
   RiSearchLine,
   RxCross2,
 } from 'react-icons/all'
-import { auth, firestore } from '../config/firebase'
+import { firestore } from '../config/firebase'
 import { useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { deleteUserInfo } from '../redux/actions/user'
 import clsx from 'clsx'
 import ModalStartChat from '../components/ModalStartChat'
-import { showStartChat } from '../redux/actions/popup'
+import { showConfirmLogout, showStartChat } from '../redux/actions/popup'
 import {
   DocumentData,
   DocumentReference,
@@ -31,6 +29,7 @@ import { setFriendList, setRoomChat } from '../redux/actions/chat'
 import ListRoomsSkeleton from '../components/ListRoomsSkeleton'
 import Tooltip from '@mui/material/Tooltip'
 import { AnimatePresence, motion } from 'framer-motion'
+import ModalConfirmLogout from '../components/ModalConfirmLogout'
 
 interface State {
   user: {
@@ -102,7 +101,6 @@ export default function Home() {
         id: usersId[index],
         time: times[index],
       }))
-      console.info('merged :', merged)
       setListRoom(merged)
     }
   }, [users, chats, roomsId, usersId, times])
@@ -223,17 +221,6 @@ export default function Home() {
     setChats(resultPromise)
   }
 
-  const signOutFromApp = () => {
-    signOut(auth)
-      .then(() => {
-        navigate('/login')
-        dispatch(deleteUserInfo())
-      })
-      .catch(err => {
-        console.error(err)
-      })
-  }
-
   const countLastMessage = datas => {
     let count = 0
     datas.forEach(i => {
@@ -253,6 +240,7 @@ export default function Home() {
   return (
     <div className="relative w-full h-full">
       <ModalStartChat />
+      <ModalConfirmLogout />
       {!isActiveSearch ? (
         <div
           className={clsx(
@@ -270,7 +258,7 @@ export default function Home() {
             <Tooltip title="Logout" arrow>
               <button
                 className="w-[42px] h-[42px] bg-white rounded-full flex items-center justify-center text-[#CACACA] hover:text-black transition-all"
-                onClick={signOutFromApp}>
+                onClick={() => dispatch(showConfirmLogout())}>
                 <AiOutlineLogout className="w-5 h-5" />
               </button>
             </Tooltip>

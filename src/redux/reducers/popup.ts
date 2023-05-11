@@ -2,6 +2,7 @@ import ActionType from '../actionType'
 
 const initialState = {
   isModalStartChat: false,
+  isModalConfirmLogout: false,
 }
 
 const reducerPopup = (state = initialState, action) => {
@@ -15,6 +16,16 @@ const reducerPopup = (state = initialState, action) => {
       return {
         ...state,
         isModalStartChat: false,
+      }
+    case ActionType.SHOW_CONFIRMLOGOUT:
+      return {
+        ...state,
+        isModalConfirmLogout: true,
+      }
+    case ActionType.HIDE_CONFIRMLOGOUT:
+      return {
+        ...state,
+        isModalConfirmLogout: false,
       }
     default:
       return state

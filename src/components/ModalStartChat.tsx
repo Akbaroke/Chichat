@@ -24,6 +24,7 @@ import { useNavigate } from 'react-router-dom'
 import { setRoomChat } from '../redux/actions/chat'
 import Tooltip from '@mui/material/Tooltip'
 
+
 interface State {
   popup: {
     isModalStartChat: boolean
@@ -54,6 +55,7 @@ export default function ModalStartChat() {
   const [email, setEmail] = React.useState('')
   const [idUserTarget, setIdUserTarget] = React.useState('')
   const [isLoadingCheckEmail, setIsLoadingCheckEmail] = React.useState(false)
+  const [isLoading, setIsLoading] = React.useState(false)
   const [validateEmail, setValidateEmail] = React.useState('')
 
   const isEmailRegister = async () => {
@@ -84,8 +86,10 @@ export default function ModalStartChat() {
   }
 
   const handleclick = async () => {
+    setIsLoading(true)
+
     // cek apakah email sudah terdaftar
-    if (checkAlready(chat.friendList)[0]) {
+    if (checkAlready(chat.friendList).includes(true)) {
       const datas: FriendList = chat.friendList
       datas.map((val, i) => {
         if (val.email === email) {
@@ -142,10 +146,28 @@ export default function ModalStartChat() {
         console.error(error)
       }
 
-      dispatch(hideStartChat())
-      // navigate('/chat')
-      setEmail('')
+      const getDataUserstarget = async () => {
+        const res = await getDoc(usersRef[1])
+        const data = res.data()
+        console.info(data)
+        if(data){
+          dispatch(
+            setRoomChat({
+              roomId: idRoom,
+              userId: res.id,
+              name: data.name,
+              imgProfile: data.imgProfile,
+              email: data.email,
+            })
+          )
+        }
+        navigate('/chat')
+      }
+
+      getDataUserstarget()
     }
+    dispatch(hideStartChat())
+    setIsLoading(false)
   }
 
   const checkAlready = datas => {
@@ -175,7 +197,7 @@ export default function ModalStartChat() {
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto w-screen h-screen sm:w-[430px] sm:h-[932px] sm:m-auto sm:mt-5 sm:rounded-[30px] sm:shadow-xl sm:border">
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
+          <div className="flex items-center justify-center min-h-full p-4 text-center">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -184,7 +206,7 @@ export default function ModalStartChat() {
               leave="ease-in duration-200"
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95">
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-[10px] bg-[#F6F6F6] text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel className="w-full transform overflow-hidden rounded-[10px] bg-[#F6F6F6] text-left align-middle shadow-xl transition-all max-w-[350px]">
                 <div className="flex justify-between items-center bg-white px-[28px] h-[70px]">
                   <h1 className="font-semibold text-[20px]">Start Chat</h1>
                   <button onClick={() => dispatch(hideStartChat())}>
@@ -213,25 +235,41 @@ export default function ModalStartChat() {
                         </div>
                       ) : validateEmail === 'Email found' ? (
                         <Tooltip title="Email Found" arrow>
-                          <AiOutlineCheckCircle className="text-green-500 cursor-pointer" />
+                          <div>
+                            <AiOutlineCheckCircle className="text-green-500 cursor-pointer" />
+                          </div>
                         </Tooltip>
                       ) : validateEmail === 'Email not found' ? (
                         <Tooltip title="Email Not Found" arrow>
-                          <AiOutlineCloseCircle className="text-red-600 cursor-pointer" />
+                          <div>
+                            <AiOutlineCloseCircle className="text-red-600 cursor-pointer" />
+                          </div>
                         </Tooltip>
                       ) : (
                         <Tooltip title="this Email is yours" arrow>
-                          <AiOutlineInfoCircle className="text-yellow-400 cursor-pointer" />
+                          <div>
+                            <AiOutlineInfoCircle className="text-yellow-400 cursor-pointer" />
+                          </div>
                         </Tooltip>
                       )}
                     </div>
                   ) : null}
                 </div>
                 <button
-                  className="w-[150px] h-[40px] bg-blue-500 rounded-lg text-[14px] text-white font-semibold grid place-items-center m-auto my-7 disabled:bg-gray-400"
+                  className="w-[100px] h-[40px] bg-blue-500 rounded-lg text-[14px] text-white font-semibold grid place-items-center m-auto my-7 disabled:bg-gray-400"
                   onClick={handleclick}
-                  disabled={validateEmail === 'Email found' ? false : true}>
-                  Continue
+                  disabled={
+                    isLoading
+                      ? true
+                      : validateEmail === 'Email found'
+                      ? false
+                      : true
+                  }>
+                  {isLoading ? (
+                    <AiOutlineLoading3Quarters className="w-4 h-4 mr-2 text-gray-200 animate-spin dark:text-gray-600 fill-white " />
+                  ) : (
+                    'Submit'
+                  )}
                 </button>
               </Dialog.Panel>
             </Transition.Child>

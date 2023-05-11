@@ -411,52 +411,54 @@ function Me({ data }: { data: Props }) {
   }
 
   return (
-    <motion.div
-      className="flex flex-col items-end mb-3 text-right"
-      onMouseEnter={() => {
-        setIsHovering(true)
-        setHoveringId(data._id)
-      }}
-      onMouseLeave={() => {
-        setIsHovering(false)
-        setHoveringId(data._id)
-      }}
-      initial={{ opacity: 0, scale: 0 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0 }}
-      layout>
-      <div
-        className={clsx(
-          'p-[17px] bg-blue-500 text-white rounded-[15px] text-[12px] whitespace-normal break-words font-medium w-max max-w-[70%] relative rounded-tr-none text-left',
-          data.isHide && 'line-through italic text-opacity-50'
-        )}>
-        {data.message}
-        {isHovering && hoveringId === data._id ? (
-          !isLoading ? (
-            data.isHide ? (
-              <BiShow
-                className="absolute top-1 -left-7 transform translate-y-1/2 text-[#BCBCBC] w-5 h-5 cursor-pointer hover:text-black transition-all"
-                onClick={showMessage}
-              />
-            ) : (
-              <BiHide
-                className="absolute top-1 -left-7 transform translate-y-1/2 text-[#BCBCBC] w-5 h-5 cursor-pointer hover:text-black transition-all"
-                onClick={hideMessage}
-              />
-            )
-          ) : null
-        ) : null}
-      </div>
-      <p className="font-medium text-[9px] text-[#BCBCBC] mt-[2px] ml-1 inline-flex items-center gap-1">
-        {converterTimestamp(data.time)}
-        {data.isRead ? (
-          <motion.div variants={variants} animate="flip">
-            <BsCheckAll className="w-4 h-4 mb-[3px] text-[#70C996]" />
-          </motion.div>
-        ) : (
-          <BsCheckAll className="w-4 h-4 mb-[3px] text-[#C2C2C2]" />
-        )}
-      </p>
-    </motion.div>
+    <div>
+      <motion.div
+        className="flex flex-col items-end mb-3 text-right"
+        onMouseEnter={() => {
+          setIsHovering(true)
+          setHoveringId(data._id)
+        }}
+        onMouseLeave={() => {
+          setIsHovering(false)
+          setHoveringId(data._id)
+        }}
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0 }}
+        layout>
+        <div
+          className={clsx(
+            'p-[17px] bg-blue-500 text-white rounded-[15px] text-[12px] whitespace-normal break-words font-medium w-max max-w-[70%] relative rounded-tr-none text-left',
+            data.isHide && 'line-through italic text-opacity-50'
+          )}>
+          {data.message}
+          {isHovering && hoveringId === data._id ? (
+            !isLoading ? (
+              data.isHide ? (
+                <BiShow
+                  className="absolute top-1 -left-7 transform translate-y-1/2 text-[#BCBCBC] w-5 h-5 cursor-pointer hover:text-black transition-all"
+                  onClick={showMessage}
+                />
+              ) : (
+                <BiHide
+                  className="absolute top-1 -left-7 transform translate-y-1/2 text-[#BCBCBC] w-5 h-5 cursor-pointer hover:text-black transition-all"
+                  onClick={hideMessage}
+                />
+              )
+            ) : null
+          ) : null}
+        </div>
+        <p className="font-medium text-[9px] text-[#BCBCBC] mt-[2px] ml-1 inline-flex items-center gap-1">
+          {converterTimestamp(data.time)}
+          {data.isRead ? (
+            <motion.div variants={variants} animate="flip">
+              <BsCheckAll className="w-4 h-4 mb-[3px] text-[#70C996]" />
+            </motion.div>
+          ) : (
+            <BsCheckAll className="w-4 h-4 mb-[3px] text-[#C2C2C2]" />
+          )}
+        </p>
+      </motion.div>
+    </div>
   )
 }

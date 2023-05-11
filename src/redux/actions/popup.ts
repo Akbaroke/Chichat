@@ -7,3 +7,11 @@ export const showStartChat = () => ({
 export const hideStartChat = () => ({
   type: ActionType.HIDE_STARTCHAT,
 })
+
+export const showConfirmLogout = () => ({
+  type: ActionType.SHOW_CONFIRMLOGOUT,
+})
+
+export const hideConfirmLogout = () => ({
+  type: ActionType.HIDE_CONFIRMLOGOUT,
+})

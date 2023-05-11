@@ -11,6 +11,7 @@ import {
 import * as React from 'react'
 import {
   BiHide,
+  BiShow,
   BsCheckAll,
   BsSend,
   BsThreeDotsVertical,
@@ -61,7 +62,8 @@ export default function RoomChat() {
   const [currentMessage, setCurrentMessage] = React.useState<string>('')
   const [heightTextArea, setHeightTextArea] = React.useState<number>(50)
   const [isLoading, setIsLoading] = React.useState<boolean>(true)
-  const [isLoadingSendMessage, setIsLoadingSendMessage] = React.useState<boolean>(false)
+  const [isLoadingSendMessage, setIsLoadingSendMessage] =
+    React.useState<boolean>(false)
 
   // realtime
   React.useEffect(() => {
@@ -149,7 +151,7 @@ export default function RoomChat() {
     } catch (error) {
       console.error(error)
       setIsLoadingSendMessage(false)
-    } 
+    }
   }
 
   const handleChange = e => {
@@ -342,9 +344,7 @@ export default function RoomChat() {
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             className={`rounded-xl bg-[#f6f6f6] h-[${heightTextArea}px] outline-none resize-none py-3 px-5 w-full`}
-            disabled={
-              isLoadingSendMessage ? true : false
-            }
+            disabled={isLoadingSendMessage ? true : false}
           />
           <Tooltip title="Send" placement="top" arrow>
             <div>
@@ -374,13 +374,45 @@ export default function RoomChat() {
   )
 }
 
-function Me({ data }) {
-  const [isHovering, setIsHovering] = React.useState(false)
-  const [hoveringId, setHoveringId] = React.useState('')
+interface Props {
+  _id: string
+  isHide: boolean
+  isRead: boolean
+  message: string
+  time: number
+  userId: string
+}
+
+function Me({ data }: { data: Props }) {
+  const [isHovering, setIsHovering] = React.useState<boolean>(false)
+  const [hoveringId, setHoveringId] = React.useState<string>('')
+  const [isLoading, setIsLoading] = React.useState<boolean>(false)
+
+  const hideMessage = async (): Promise<void> => {
+    setIsLoading(true)
+    const chatsRef = doc(firestore, 'chats', data._id)
+    const chatData = await getDoc(chatsRef)
+    await updateDoc(chatsRef, {
+      ...chatData.data(),
+      isHide: true,
+    })
+    setIsLoading(false)
+  }
+
+  const showMessage = async (): Promise<void> => {
+    setIsLoading(true)
+    const chatsRef = doc(firestore, 'chats', data._id)
+    const chatData = await getDoc(chatsRef)
+    await updateDoc(chatsRef, {
+      ...chatData.data(),
+      isHide: false,
+    })
+    setIsLoading(false)
+  }
 
   return (
     <motion.div
-      className="flex flex-col text-right items-end mb-3"
+      className="flex flex-col items-end mb-3 text-right"
       onMouseEnter={() => {
         setIsHovering(true)
         setHoveringId(data._id)
@@ -399,8 +431,20 @@ function Me({ data }) {
           data.isHide && 'line-through italic text-opacity-50'
         )}>
         {data.message}
-        {isHovering && hoveringId === (data._id as string) ? (
-          <BiHide className="absolute top-1 -left-7 transform translate-y-1/2 text-[#BCBCBC] w-5 h-5 cursor-pointer hover:text-black transition-all" />
+        {isHovering && hoveringId === data._id ? (
+          !isLoading ? (
+            data.isHide ? (
+              <BiShow
+                className="absolute top-1 -left-7 transform translate-y-1/2 text-[#BCBCBC] w-5 h-5 cursor-pointer hover:text-black transition-all"
+                onClick={showMessage}
+              />
+            ) : (
+              <BiHide
+                className="absolute top-1 -left-7 transform translate-y-1/2 text-[#BCBCBC] w-5 h-5 cursor-pointer hover:text-black transition-all"
+                onClick={hideMessage}
+              />
+            )
+          ) : null
         ) : null}
       </div>
       <p className="font-medium text-[9px] text-[#BCBCBC] mt-[2px] ml-1 inline-flex items-center gap-1">

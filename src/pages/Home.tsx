@@ -5,6 +5,7 @@ import {
   AiOutlinePlus,
   BsCheckAll,
   HiOutlineChatBubbleBottomCenterText,
+  ImBlocked,
   RiSearchLine,
   RxCross2,
 } from 'react-icons/all'
@@ -250,7 +251,7 @@ export default function Home() {
   const resultRooms = search.length > 0 ? sortBySearch : sortedByTime
 
   return (
-    <div className="w-full h-full relative">
+    <div className="relative w-full h-full">
       <ModalStartChat />
       {!isActiveSearch ? (
         <div
@@ -266,7 +267,7 @@ export default function Home() {
                 <RiSearchLine className="w-5 h-5" />
               </button>
             </Tooltip>
-            <Tooltip title="Search" arrow>
+            <Tooltip title="Logout" arrow>
               <button
                 className="w-[42px] h-[42px] bg-white rounded-full flex items-center justify-center text-[#CACACA] hover:text-black transition-all"
                 onClick={signOutFromApp}>
@@ -281,13 +282,13 @@ export default function Home() {
             'h-[70px] py-2 px-[25px] sticky top-0 bg-white shadow-lg shadow-white'
           )}>
           <div className="max-w-md mx-auto">
-            <div className="relative flex items-center w-full h-12 rounded-lg shadow-lg bg-white overflow-hidden">
+            <div className="relative flex items-center w-full h-12 overflow-hidden bg-white rounded-lg shadow-lg">
               <div className="grid place-items-center h-12 w-12 text-[#CACACA] ">
                 <RiSearchLine />
               </div>
 
               <input
-                className="peer h-full w-full outline-none text-sm text-gray-700 pr-2 focus:ring-0"
+                className="w-full h-full pr-2 text-sm text-gray-700 outline-none peer focus:ring-0"
                 type="text"
                 autoFocus
                 value={search}
@@ -348,13 +349,13 @@ export default function Home() {
                           {data.detailMessage?.length > 0 ? (
                             <p
                               className={clsx(
-                                'font-normal text-[12px] text-[#A0A0A0] truncate max-w-[180px]',
+                                'font-normal text-[12px] text-[#A0A0A0] truncate max-w-[180px] inline-flex items-center gap-1',
                                 data.detailMessage[
                                   data.detailMessage.length - 1
                                 ].isHide &&
                                   data.detailMessage[
                                     data.detailMessage.length - 1
-                                  ].userId === user.id &&
+                                  ].userId !== user.id &&
                                   'italic text-opacity-50',
                                 data.detailMessage[
                                   data.detailMessage.length - 1
@@ -362,22 +363,26 @@ export default function Home() {
                                   data.detailMessage[
                                     data.detailMessage.length - 1
                                   ].userId === user.id &&
-                                  'line-through'
+                                  'line-through italic text-opacity-50'
                               )}>
                               {data.detailMessage[data.detailMessage.length - 1]
                                 .isHide &&
                               data.detailMessage[data.detailMessage.length - 1]
-                                .userId === user.id
-                                ? data.detailMessage[
-                                    data.detailMessage.length - 1
-                                  ].message
-                                : data.detailMessage[
-                                    data.detailMessage.length - 1
-                                  ].isHide
-                                ? 'Message has been hidden'
-                                : data.detailMessage[
-                                    data.detailMessage.length - 1
-                                  ].message}
+                                .userId === user.id ? (
+                                data.detailMessage[
+                                  data.detailMessage.length - 1
+                                ].message
+                              ) : data.detailMessage[
+                                  data.detailMessage.length - 1
+                                ].isHide ? (
+                                <>
+                                  <ImBlocked /> Message has been hidden
+                                </>
+                              ) : (
+                                data.detailMessage[
+                                  data.detailMessage.length - 1
+                                ].message
+                              )}
                             </p>
                           ) : (
                             <i className="font-normal text-[12px] text-[#70C996] truncate max-w-[150px]">
@@ -423,7 +428,7 @@ export default function Home() {
                           <p className="font-normal text-[12px] text-[#A0A0A0]">
                             {converterTimestamp(data.time)}
                           </p>
-                          <span className="w-5 h-5 invisible"></span>
+                          <span className="invisible w-5 h-5"></span>
                         </div>
                       )}
                     </motion.div>
@@ -446,7 +451,7 @@ export default function Home() {
       {!isLoading ? (
         <Tooltip title="Start chat" placement="top" arrow>
           <div
-            className="grid place-items-center bg-blue-500 text-white rounded-full w-12 h-12 cursor-pointer shadow-md absolute left-1/2 transform -translate-x-1/2 bottom-10"
+            className="absolute grid w-12 h-12 text-white transform -translate-x-1/2 bg-blue-500 rounded-full shadow-md cursor-pointer place-items-center left-1/2 bottom-10"
             onClick={() => dispatch(showStartChat())}>
             <AiOutlinePlus className="w-6 h-6" />
           </div>

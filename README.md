@@ -1,5 +1,5 @@
 <div align="center">
-  <a href="https://chichat-livid.vercel.app">
+  <a href="https://chichatt.vercel.app">
     <img src="./src/assets/logo_chichat.png" alt="Logo" width="300">
   </a>
   <h2 style="font-size:30px;" align="center"><strong>Chichat</strong></h2>
@@ -38,5 +38,5 @@ Chitchat is a realtime chat web application with the convenience and user experi
 
 ## Links
 
-- Web : [https://chichat-livid.vercel.app](https://chichat-livid.vercel.app)
+- Web : [https://chichatt.vercel.app](https://chichatt.vercel.app)
 - Repo : [https://github.com/Akbaroke/Chichat](https://github.com/Akbaroke/Chichat)

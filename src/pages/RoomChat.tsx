@@ -245,11 +245,11 @@ export default function RoomChat() {
             </div>
           </div>
         </div>
-        <Tooltip title="Setting" arrow>
-          <div>
-            <BsThreeDotsVertical className="w-6 h-6 text-[#CBCBCB] cursor-pointer hover:text-black" />
-          </div>
-        </Tooltip>
+        {/* <Tooltip title="Setting" arrow> */}
+        <div>
+          <BsThreeDotsVertical className="w-6 h-6 text-[#CBCBCB] cursor-pointer hover:text-black invisible" />
+        </div>
+        {/* </Tooltip> */}
       </div>
 
       {/* Body Chat */}
